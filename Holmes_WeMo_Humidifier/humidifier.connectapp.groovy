@@ -174,7 +174,8 @@ def addHumidifiers() {
 
         if (!d) {
             log.debug "Creating WeMo Humidifier with dni: ${selectedHumidifier.value.mac}"
-            d = addChildDevice("wemo", "WeMo Humidifier", selectedHumidifier.value.mac, selectedHumidifier?.value.hub, [
+            log.debug "IP: ${selectedHumidifier.value.ip} - PORT: ${selectedHumidifier.value.port}"
+            d = addChildDevice("bkeifer", "Holmes WeMo Humidifier", selectedHumidifier.value.mac, selectedHumidifier?.value.hub, [
                 "label": selectedHumidifier?.value?.name ?: "WeMo Humidifier",
                 "data": [
                     "mac": selectedHumidifier.value.mac,
