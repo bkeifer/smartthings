@@ -41,6 +41,7 @@ metadata {
         //attribute "time" ,string
         //attribute "mode", string
         attribute "filterLife", integer
+        attribute "desiredHumidity", string
         attribute "humidity", string
         attribute "fanMode", string
     }
@@ -52,7 +53,7 @@ metadata {
     tiles {
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
             state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
-            state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+            state "off", label:'${name}', action:"switch.off", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
 
         }
 
@@ -78,9 +79,9 @@ metadata {
             state "default", label:'Humidity: ${currentValue}', unit:"%"
         }
 
-    //    valueTile("desiredHumidity", "device.desiredHumidity",decoration:"flat") {
-    //        state "default", label:'Desired Humidity: ${currentValue}', unit:"%"
-    //    }
+        valueTile("desiredHumidity", "device.desiredHumidity",decoration:"flat") {
+            state "default", label:'Desired Humidity: ${currentValue}', unit:"%"
+        }
 
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -89,36 +90,38 @@ metadata {
 
         main "switch"
         //details (["switch","cookedTime","time","mode", "refresh"])
-        details (["switch", "refresh", "fanMode", "humidity", "filterLife"])
+        details (["switch", "refresh", "fanMode", "humidity", "desiredHumidity", "filterLife"])
     }
 }
 
 
 
-
-
 // parse events into attributes
 def parse(String description){
-    log.debug("desc: ${description}")
+
+    def msg = parseLanMessage(description)
+    def headersAsString = msg.header
+    log.debug("HAS: ${headersAsString}")
+    //log.debug("desc: ${description}")
+
     def map = stringToMap(description)
     def decodedHeaders = map.headers.decodeBase64()
     def headerString = decodedHeaders.toString()
-    log.debug("HeaderString: ${headerString}")
+
     def result = []
 
     // update subscriptionId
-    if (headerString.contains("SID: uuid:")) {
-        def sid = (headerString =~ /SID: uuid:.*/) ? ( headerString =~ /SID: uuid:.*/)[0] : "0"
+    if (headersAsString.contains("SID: uuid:")) {
+        def sid = (headersAsString =~ /SID: uuid:.*/) ? ( headersAsString =~ /SID: uuid:.*/)[0] : "0"
         sid -= "SID: uuid:".trim()
-        //log.debug('Update subscriptionID: '+ sid)
+        log.debug('Update subscriptionID: '+ sid)
         updateDataValue("subscriptionId", sid)
     }
-    log.debug("body: ${new String(map.body.decodeBase64())}")
+    //log.debug("body: ${new String(map.body.decodeBase64())}")
     // parse the rest of the message
     if (map.body) {
         def bodyString = new String(map.body.decodeBase64())
         def body = new XmlSlurper().parseText(bodyString)
-        log.debug("body[0]: ${body[0]}")
 
         if (body.text() =~ /UPnPError/) {
             log.trace("Error recieved!")
@@ -148,11 +151,18 @@ def parse(String description){
                 log.trace("Fan Mode: ${fanModes[attrName[0][2].toInteger()]}")
                 result << createEvent(name: "fanMode", value: fanModes[attrName[0][2].toInteger()] )
             }
+
+            if ( attrName[0][1] == "DesiredHumidity" ) {
+                def setPoints = ["45%", "50%", "55%", "60%", "MAX"]
+                log.trace("Desired Humidity: ${setPoints[attrName[0][2].toInteger()]}")
+                result << createEvent(name: "desiredHumidity", value: setPoints[attrName[0][2].toInteger()] )
+            }
+
         }
-        if(body?.Body?.GetJardenStatus?.filterLife?.text()) {
-            def filterLife = body.attribute.value.text()
-            log.trace "FILTER LIFE: ${filterLife}"
-        }
+        //if(body?.Body?.GetJardenStatus?.filterLife?.text()) {
+        //    def filterLife = body.attribute.value.text()
+        //    log.trace "FILTER LIFE: ${filterLife}"
+        //}
         /*
         //Set Crockpot State Response
         if(body?.Body?.SetHumidifierStateResponse?.time?.text()){
@@ -278,7 +288,7 @@ private getHostAddress() {
 
 private postRequest(path, SOAPaction, body) {
     // Send  a post request
-    new physicalgraph.device.HubAction([
+    def result = new physicalgraph.device.HubAction([
         'method': 'POST',
         'path': path,
         'body': body,
@@ -288,19 +298,14 @@ private postRequest(path, SOAPaction, body) {
         'SOAPAction': "\"${SOAPaction}\""
         ]
     ], device.deviceNetworkId)
+    result
+    log.debug "RESULT: ${result}"
 }
 
 
 def poll() {
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:GetJardenStatus xmlns:u="urn:Belkin:service:basicevent:1"></u:GetJardenStatus>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#GetJardenStatus', body)
+    // TODO: Get this ip/port dynamically
+    subscribe("10.13.13.45:49153")
 }
 
 
@@ -309,29 +314,57 @@ def on() {
     <?xml version="1.0" encoding="utf-8"?>
     <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <SOAP-ENV:Body>
-    <m:SetHumidifierState xmlns:m="urn:Belkin:service:basicevent:1">
-    <mode>1</mode><time>1</time>
-    </m:SetHumidifierState>
+    <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
+    <BinaryState>1</BinaryState>
+    </m:SetBinaryState>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>
     """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetHumidifierState', body)
-
+    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
 }
 
 
+
 def off() {
+    log.debug("inside off")
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <SOAP-ENV:Body>
-    <m:SetJardenStatus xmlns:m="urn:Belkin:service:basicevent:1">
-    <mode>0</mode><time>0</time>
-    </m:SetJardenStatus>
+    <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
+    <BinaryState>0</BinaryState>
+    </m:SetBinaryState>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>
     """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetJardenStatus', body)
+    //postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
+    log.debug("doaction")
+    doAction("SetBinaryState", "basicevent", "/upnp/control/basicevent1", [BinaryState:0])
+}
+/*def off() {
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <SOAP-ENV:Body>
+    <m:GetFriendlyName xmlns:m="urn:Belkin:service:basicevent:1">
+    </m:GetFriendlyName>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>
+    """
+    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#GetFriendlyName', body)
+}*/
+
+
+def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
+    def result = new physicalgraph.device.HubSoapAction(
+        path:    path,
+        urn:     "urn:Belkin:service:$service:1",
+        action:  action,
+        body:    body,
+        headers: [Host:getHostAddress(), CONNECTION: "close"]
+    )
+    return result
+
 }
 
 
@@ -339,29 +372,70 @@ def refresh() {
     //log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
     log.debug("Refresh requested!")
     poll()
-    subscribe("10.13.13.45:49153")
+    //subscribeAction("/upnp/event/basicevent1")
+    //off()
 }
 
+private subscribeAction(path, callbackPath="") {
+    log.trace "subscribe($path, $callbackPath)"
+    def address = getCallBackAddress()
+    address = "10.13.13.5"
+    def ip = getHostAddress()
+
+    def result = new physicalgraph.device.HubAction(
+        method: "SUBSCRIBE",
+        path: path,
+        headers: [
+            HOST: ip,
+            CALLBACK: "<http://${address}/>",
+            NT: "upnp:event",
+            TIMEOUT: "Second-28800"
+        ]
+    )
+
+    log.trace "SUBSCRIBE $path"
+    log.trace "RESULT: ${result}"
+    result
+}
 
 def subscribe(hostAddress) {
-    //log.debug "Executing 'subscribe()'"
+    log.debug "Subscribing to ${hostAddress}"
+    subscribeAction("/upnp/event/basicevent1")
+    /*
+    String x
     def hubAddress = getCallBackAddress()
+
+    def notifyURL = "&lt;" + "http://" + hubAddress + "/notify&gt;"
+
+    x = """SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
+    HOST: ${hostAddress}
+    CALLBACK: &lt;http://${hubAddress}/&gt;
+    NT: upnp:event
+    TIMEOUT: Second-5400
+    User-Agent: CyberGarage-HTTP/1.0
+
+
+    """
+
+    log.debug("x: ${x}")
 
     def result = new physicalgraph.device.HubAction(
         method: "SUBSCRIBE",
         path: "/upnp/event/basicevent1",
         headers: [
-            HOST: hostAddress,
-            CALLBACK: "<http://${hubAddress}/notify>",
+            HOST: getHostAddress(),
+            CALLBACK: "<http://${getCallBackAddress()}/notify>",
             NT: "upnp:event",
             TIMEOUT: "Second-3600"
         ]
     )
-    result
+    log.debug(result)
+*/
+    /////////////////////////////////////////////////////
     /*
     def action = """SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
     HOST: ${hostAddress}
-    CALLBACK: ${x}
+    CALLBACK: &lt;http://${hubAddress}/&gt;
     NT: upnp:event
     TIMEOUT: Second-5400
     User-Agent: CyberGarage-HTTP/1.0
