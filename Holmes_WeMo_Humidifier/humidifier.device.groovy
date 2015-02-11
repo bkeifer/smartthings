@@ -297,8 +297,9 @@ private postRequest(path, SOAPaction, body) {
         'Content-type': 'text/xml; charset=utf-8',
         'SOAPAction': "\"${SOAPaction}\""
         ]
-    ], device.deviceNetworkId)
-    result
+        ], device.deviceNetworkId)
+
+    return result
     log.debug "RESULT: ${result}"
 }
 
@@ -310,50 +311,58 @@ def poll() {
 
 
 def on() {
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <SOAP-ENV:Body>
-    <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
-    <BinaryState>1</BinaryState>
-    </m:SetBinaryState>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>
-    """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
+    // def body = """
+    // <?xml version="1.0" encoding="utf-8"?>
+    // <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    // <SOAP-ENV:Body>
+    // <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
+    // <BinaryState>1</BinaryState>
+    // </m:SetBinaryState>
+    // </SOAP-ENV:Body>
+    // </SOAP-ENV:Envelope>
+    // """
+    // postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
+    off()
 }
 
+
+// THIS SECTION SENDS NETWORK TRAFFIC
+    // def off() {
+    //     log.debug("inside off")
+    //     def body = """
+    //     <?xml version="1.0" encoding="utf-8"?>
+    //     <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    //     <SOAP-ENV:Body>
+    //     <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
+    //     <BinaryState>0</BinaryState>
+    //     </m:SetBinaryState>
+    //     </SOAP-ENV:Body>
+    //     </SOAP-ENV:Envelope>
+    //     """
+    //     log.debug("doaction")
+    //     doAction("SetBinaryState", "basicevent", "/upnp/control/basicevent1", [BinaryState:0])
+    // }
 
 
 def off() {
     log.debug("inside off")
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
-    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <SOAP-ENV:Body>
-    <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
-    <BinaryState>0</BinaryState>
-    </m:SetBinaryState>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:GetBinaryState xmlns:u="urn:Belkin:service:basicevent:1">
+    <BinaryState></BinaryState>
+    </u:GetBinaryState>
+    </s:Body>
+    </s:Envelope>
     """
-    //postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
-    log.debug("doaction")
-    doAction("SetBinaryState", "basicevent", "/upnp/control/basicevent1", [BinaryState:0])
+    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#GetBinaryState', body)
 }
-/*def off() {
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <SOAP-ENV:Body>
-    <m:GetFriendlyName xmlns:m="urn:Belkin:service:basicevent:1">
-    </m:GetFriendlyName>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>
-    """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#GetFriendlyName', body)
-}*/
 
+// def off() {
+//     log.debug("inside off")
+//     doAction("GetBinaryState", "basicevent", "/upnp/control/basicevent", [:])
+// }
 
 def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
     def result = new physicalgraph.device.HubSoapAction(
@@ -361,7 +370,7 @@ def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
         urn:     "urn:Belkin:service:$service:1",
         action:  action,
         body:    body,
-        headers: [Host:getHostAddress(), CONNECTION: "close"]
+        headers: [Host:getHostAddress()]
     )
     return result
 
@@ -401,6 +410,7 @@ private subscribeAction(path, callbackPath="") {
 def subscribe(hostAddress) {
     log.debug "Subscribing to ${hostAddress}"
     subscribeAction("/upnp/event/basicevent1")
+    subscribeAction("/upnp/event/jardenevent1")
     /*
     String x
     def hubAddress = getCallBackAddress()
