@@ -350,13 +350,12 @@ def off() {
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <s:Body>
-    <u:GetBinaryState xmlns:u="urn:Belkin:service:basicevent:1">
-    <BinaryState></BinaryState>
-    </u:GetBinaryState>
+    <u:GetCrockpotState xmlns:u="urn:Belkin:service:crockpotevent:1">
+    </u:GetCrockpotState>
     </s:Body>
     </s:Envelope>
     """
-    postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#GetBinaryState', body)
+    postRequest('/upnp/control/crockpot1', 'urn:Belkin:service:crockpotevent:1#GetCrockpotState', body)
 }
 
 // def off() {
@@ -410,7 +409,6 @@ private subscribeAction(path, callbackPath="") {
 def subscribe(hostAddress) {
     log.debug "Subscribing to ${hostAddress}"
     subscribeAction("/upnp/event/basicevent1")
-    subscribeAction("/upnp/event/jardenevent1")
     /*
     String x
     def hubAddress = getCallBackAddress()
