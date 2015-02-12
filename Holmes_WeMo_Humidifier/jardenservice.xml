@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:Belkin:service-1-0">
+
+<specVersion>
+  <major>1</major>
+  <minor>0</minor>
+</specVersion>
+  
+<actionList>
+
+ <action>
+    <name>SetCrockpotState</name>
+    <argumentList>
+      <argument>
+        <retval />
+        <name>mode</name>
+        <relatedStateVariable>mode</relatedStateVariable>
+        <direction>in</direction>
+      </argument>
+      <argument>
+        <retval />
+        <name>time</name>
+        <relatedStateVariable>timeVariable</relatedStateVariable>
+        <direction>in</direction>
+      </argument>
+    </argumentList>
+ </action>
+
+ <action>
+    <name>GetCrockpotState</name>
+    <argumentList>
+      <argument>
+        <retval />
+        <name>mode</name>
+        <relatedStateVariable>mode</relatedStateVariable>
+        <direction>out</direction>
+      </argument>
+      <argument>
+        <retval />
+        <name>time</name>
+        <relatedStateVariable>timeVariable</relatedStateVariable>
+        <direction>out</direction>
+      </argument>
+      <argument>
+        <retval />
+        <name>startTime</name>
+        <relatedStateVariable>timeVariable</relatedStateVariable>
+        <direction>out</direction>
+     </argument>
+    </argumentList>
+ </action>
+
+ <action>
+   <name>SetJardenStatus</name>
+   <argumentList>
+     <argument>
+      <retval />
+      <name>mode</name>
+      <relatedStateVariable>mode</relatedStateVariable>
+      <direction>in</direction>
+     </argument>
+     <argument>
+       <retval />
+       <name>time</name>
+       <relatedStateVariable>timeVariable</relatedStateVariable>
+       <direction>in</direction>
+     </argument>
+    </argumentList>
+ </action>
+
+ <action>
+   <name>GetJardenStatus</name>
+   <argumentList>
+     <argument>
+      <retval />
+      <name>mode</name>
+      <relatedStateVariable>mode</relatedStateVariable>
+      <direction>out</direction>
+     </argument>
+     <argument>
+      <retval />
+      <name>time</name>
+      <relatedStateVariable>timeVariable</relatedStateVariable>
+      <direction>out</direction>
+     </argument>
+     <argument>
+        <retval />
+        <name>startTime</name>
+        <relatedStateVariable>timeVariable</relatedStateVariable>
+        <direction>out</direction>
+     </argument>
+    </argumentList>
+  </action>
+
+</actionList>
+  
+<serviceStateTable>
+  
+  <stateVariable sendEvents="yes">
+   <name>mode</name>
+   <dataType>string</dataType>
+   <defaultValue>1</defaultValue>
+  </stateVariable>
+  
+  <stateVariable sendEvents="yes">
+   <name>time</name>
+   <dataType>string</dataType>
+   <defaultValue>1</defaultValue>
+  </stateVariable>
+  
+    <stateVariable sendEvents="yes">
+      <name>startTime</name>
+      <dataType>string</dataType>
+      <defaultValue>1</defaultValue>
+    </stateVariable>
+    
+</serviceStateTable>
+  
+</scpd>
