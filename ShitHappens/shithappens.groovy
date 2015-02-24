@@ -37,6 +37,9 @@ preferences {
     section("Low temperature to trigger warning...") {
         input "lowtemp", "number", title: "In degrees F", required: false
     }
+    section("How far out should we look for freezing temps?") {
+        input "hours", "number", title: "Hours", required: false, description: 24
+    }
     section("Forecast API Key") {
         input "apikey", "text", required: false
     }
@@ -58,12 +61,14 @@ def initialize() {
     log.trace("initialize")
     state.alerts = [:]
     state.contacts = [:]
+    state.forecast = []
 
     subscribe(app, appTouch)
     subscribe(contacts, "contact.open", contactOpenHandler)
     subscribe(contacts, "contact.closed", contactClosedHandler)
 
-    runEvery5Minutes(checkAll)
+    //runEvery5Minutes(checkAll)
+
 }
 
 
@@ -143,10 +148,53 @@ def turnOnToColor(color) {
         }
     }
 
+
+def getForecast() {
+    def params = [
+        uri: "https://api.forecast.io",
+        path: "/forecast/${apikey}/40.496754,-75.438682"
+    ]
+
+    try {
+        httpGet(params) { resp ->
+            if (resp.data) {
+                //log.debug "Response Data = ${resp.data}"
+                //log.debug "Response Status = ${resp.status}"
+                // resp.headers.each {
+                //     log.debug "header: ${it.name}: ${it.value}"
+                // }
+                resp.getData().each {
+                    if (it.key == "hourly") {
+                        def x = it.value
+                        x.each { xkey ->
+                            if (xkey.key == "data") {
+                                def y = xkey.value
+                                def templist = y["temperature"]
+
+                                for (int i = 0; i <= 48; i++) {
+                                    state.forecast[i] = templist[i]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if(resp.status == 200) {
+                log.debug "Request was OK"
+            } else {
+                log.error "Request got http status ${resp.status}"
+            }
+        }
+    } catch(e) {
+        log.debug e
+    }
+}
+
+
 def getLowTemp() {
     def params = [
-    uri: "https://api.forecast.io",
-    path: "/forecast/${apikey}/40.496754,-75.438682"
+        uri: "https://api.forecast.io",
+        path: "/forecast/${apikey}/40.496754,-75.438682"
     ]
     int lowForecast = 1000  // Ow!
 
@@ -168,12 +216,14 @@ def getLowTemp() {
                                 def templist = y["temperature"]
                                 def timelist = y["time"]
 
-                                for (int i = 0; i <= 12; i++) {
+                                for (int i = 0; i <= 48; i++) {
+                                    state.forecast[i] = templist[i]
                                     if ( templist[i] < lowForecast) {
                                         lowForecast = templist[i]
                                         log.info("new low: ${templist[i]} at ${new Date( ((long)timelist[i])*1000 ) }")
                                     }
                                 }
+                                log.warn state.forecast
                             }
                         }
                     }
@@ -181,18 +231,20 @@ def getLowTemp() {
             }
             if(resp.status == 200) {
                 log.debug "Request was OK"
-            } else {
-                log.error "Request got http status ${resp.status}"
+                } else {
+                    log.error "Request got http status ${resp.status}"
+                }
             }
+        } catch(e) {
+            log.debug e
         }
-    } catch(e) {
-        log.debug e
-    }
     return lowForecast
 }
 
 
 def appTouch(evt) {
+    log.trace(appTouch)
+    getForecast()
     checkAll()
     log.trace(state)
 }
@@ -221,12 +273,14 @@ def updateHues() {
 
 def checkForFreeze() {
     log.trace("checkForFreeze")
-    if (getLowTemp() < lowtemp ) {
-        log.debug("Freeze warning found, turning on lights.")
-        state.alerts["freeze"] = true
-    } else {
-        state.alerts["freeze"] = false
-        log.debug("The pipes are safe.  For now...")
+    for (int i = 0; i < hours; i++) {
+        if (state.forecast[i] < lowtemp) {
+            state.alerts["freeze"] = true
+            log.debug("FREEZE WARNING FOUND IN ${i} HOUR(s)!")
+            return 0
+        }
     }
+    state.alerts["freeze"] = false
+    log.debug("No freeze warning found.")
     log.trace(state)
 }
