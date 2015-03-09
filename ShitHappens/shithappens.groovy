@@ -38,6 +38,9 @@ preferences {
     section("Low temperature to trigger warning...") {
         input "lowtemp", "number", title: "In degrees F", required: false
     }
+    section("How far out should we look for freezing temps?") {
+        input "hours", "number", title: "Hours", required: false, description: 24
+    }
     section("Forecast API Key") {
         input "apikey", "text", required: false
     }
@@ -70,6 +73,7 @@ def initialize() {
 
     checkAll()
     runEvery5Minutes(checkAll)
+    runEvery15Minutes(getForecast)
 }
 
 
