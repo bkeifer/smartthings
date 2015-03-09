@@ -37,9 +37,6 @@ preferences {
     section("Low temperature to trigger warning...") {
         input "lowtemp", "number", title: "In degrees F", required: false
     }
-    section("How far out should we look for freezing temps?") {
-        input "hours", "number", title: "Hours", required: false, description: 24
-    }
     section("Forecast API Key") {
         input "apikey", "text", required: false
     }
@@ -61,14 +58,13 @@ def initialize() {
     log.trace("initialize")
     state.alerts = [:]
     state.contacts = [:]
-    state.forecast = []
 
     subscribe(app, appTouch)
     subscribe(contacts, "contact.open", contactOpenHandler)
     subscribe(contacts, "contact.closed", contactClosedHandler)
 
-    //runEvery5Minutes(checkAll)
-
+    checkAll()
+    runEvery5Minutes(checkAll)
 }
 
 
@@ -76,7 +72,7 @@ def contactOpenHandler(evt) {
     log.trace("contactOpenHandler")
     state.contacts[evt.displayName] = false
     state.alerts["contact"] = true
-    turnOnToColor("Red")
+    flashToOn("Red")
     log.debug(state)
 }
 
@@ -85,21 +81,54 @@ def contactClosedHandler(evt) {
     log.trace("contactClosedHandler")
     state.contacts[evt.displayName] = true
     log.debug(state.contacts)
-    turnOnToColor("Green")
-    runIn(60, updateHues)
     checkDoors()
+    flash("Green")
+    log.debug("continuing")
+    updateHues()
+}
+
+def flash(color, int reps = 3) {
+    reps.times {
+        turnOnToColor(color)
+        pause(500)
+        hues*.off()
+        pause(500)
+    }
+    if (leaveOn) {
+        turnOnToColor(color)
+    }
+}
+
+
+def flashToOn(color, int reps = 3) {
+    reps.times {
+        turnOnToColor(color)
+        pause(500)
+        hues*.off()
+        pause(500)
+    }
+    turnOnToColor(color)
 }
 
 def checkDoors() {
-    int openContacts = 0
-
     log.trace("checkDoors")
-    state.contacts.each {
-        //log.debug("CONTACT: ${it.key} - ${it.value}")
-        if (it.value == false) {
+    int openContacts = 0
+    contacts.each {
+        if (it.currentState("contact").value == "closed") {
+            state.contacts[it.displayName] == true
+        } else {
+            state.contacts[it.displayName] == false
             openContacts++
         }
     }
+
+    //log.trace("checkDoors")
+    //state.contacts.each {
+        //log.debug("CONTACT: ${it.key} - ${it.value}")
+    //    if (it.value == false) {
+    //        openContacts++
+    //    }
+    //}
     if (openContacts > 0) {
         state.alerts["contact"] = true
         log.debug("Doors still open")
@@ -111,8 +140,8 @@ def checkDoors() {
 }
 
 
-def turnOnToColor(color) {
-    log.trace("turnOnToColor(${color})")
+def turnOnToColor(color, delay = 0) {
+    log.trace("turnOnToColor(${color}) delay: ${delay}")
     def hueColor = 70
     def saturation = 100
     def lightLevel = 100
@@ -144,57 +173,14 @@ def turnOnToColor(color) {
         hues*.setColor(newValue)
         log.debug "new value = $newValue"
         } else {
-            hues*.on()
+            hues*.on(delay: delay)
         }
     }
-
-
-def getForecast() {
-    def params = [
-        uri: "https://api.forecast.io",
-        path: "/forecast/${apikey}/40.496754,-75.438682"
-    ]
-
-    try {
-        httpGet(params) { resp ->
-            if (resp.data) {
-                //log.debug "Response Data = ${resp.data}"
-                //log.debug "Response Status = ${resp.status}"
-                // resp.headers.each {
-                //     log.debug "header: ${it.name}: ${it.value}"
-                // }
-                resp.getData().each {
-                    if (it.key == "hourly") {
-                        def x = it.value
-                        x.each { xkey ->
-                            if (xkey.key == "data") {
-                                def y = xkey.value
-                                def templist = y["temperature"]
-
-                                for (int i = 0; i <= 48; i++) {
-                                    state.forecast[i] = templist[i]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if(resp.status == 200) {
-                log.debug "Request was OK"
-            } else {
-                log.error "Request got http status ${resp.status}"
-            }
-        }
-    } catch(e) {
-        log.debug e
-    }
-}
-
 
 def getLowTemp() {
     def params = [
-        uri: "https://api.forecast.io",
-        path: "/forecast/${apikey}/40.496754,-75.438682"
+    uri: "https://api.forecast.io",
+    path: "/forecast/${apikey}/40.496754,-75.438682"
     ]
     int lowForecast = 1000  // Ow!
 
@@ -216,14 +202,12 @@ def getLowTemp() {
                                 def templist = y["temperature"]
                                 def timelist = y["time"]
 
-                                for (int i = 0; i <= 48; i++) {
-                                    state.forecast[i] = templist[i]
+                                for (int i = 0; i <= 12; i++) {
                                     if ( templist[i] < lowForecast) {
                                         lowForecast = templist[i]
-                                        log.info("new low: ${templist[i]} at ${new Date( ((long)timelist[i])*1000 ) }")
+                                        //log.info("new low: ${templist[i]} at ${new Date( ((long)timelist[i])*1000 ) }")
                                     }
                                 }
-                                log.warn state.forecast
                             }
                         }
                     }
@@ -231,20 +215,19 @@ def getLowTemp() {
             }
             if(resp.status == 200) {
                 log.debug "Request was OK"
-                } else {
-                    log.error "Request got http status ${resp.status}"
-                }
+            } else {
+                log.error "Request got http status ${resp.status}"
             }
-        } catch(e) {
-            log.debug e
         }
+    } catch(e) {
+        log.debug e
+    }
     return lowForecast
 }
 
 
 def appTouch(evt) {
-    log.trace(appTouch)
-    getForecast()
+    log.debug("TOUCHED!")
     checkAll()
     log.trace(state)
 }
@@ -258,29 +241,75 @@ def checkAll() {
 }
 
 
-def updateHues() {
-    log.trace("updateHues")
+def updateHues(delay = 0) {
+    log.trace("updateHues delay:${delay}")
     log.debug("state.alerts[\"contact\"]: ${state.alerts["contact"]}")
-    if(state.alerts["contact"]) {
-        turnOnToColor("Red")
+    if(state.alerts["contact"] == true) {
+        flash("Red")
     } else if (state.alerts["freeze"]) {
-        turnOnToColor("Blue")
+        turnOnToColor("Blue", delay)
     } else {
-        hues*.off()
+        log.debug("turning off!  delay: ${delay}")
+        hues*.off(delay: delay)
     }
 }
 
 
 def checkForFreeze() {
     log.trace("checkForFreeze")
-    for (int i = 0; i < hours; i++) {
-        if (state.forecast[i] < lowtemp) {
-            state.alerts["freeze"] = true
-            log.debug("FREEZE WARNING FOUND IN ${i} HOUR(s)!")
-            return 0
-        }
+    if (getLowTemp() < lowtemp ) {
+        log.debug("Freeze warning found, turning on lights.")
+        state.alerts["freeze"] = true
+    } else {
+        state.alerts["freeze"] = false
+        log.debug("The pipes are safe.  For now...")
     }
-    state.alerts["freeze"] = false
-    log.debug("No freeze warning found.")
     log.trace(state)
+}
+
+private flashLights() {
+    def doFlash = true
+    def onFor = onFor ?: 1000
+    def offFor = offFor ?: 1000
+    def numFlashes = numFlashes ?: 3
+
+    log.debug "LAST ACTIVATED IS: ${state.lastActivated}"
+    if (state.lastActivated) {
+        def elapsed = now() - state.lastActivated
+        def sequenceTime = (numFlashes + 1) * (onFor + offFor)
+        doFlash = elapsed > sequenceTime
+        log.debug "DO FLASH: $doFlash, ELAPSED: $elapsed, LAST ACTIVATED: ${state.lastActivated}"
+    }
+
+    if (doFlash) {
+        log.debug "FLASHING $numFlashes times"
+        state.lastActivated = now()
+        log.debug "LAST ACTIVATED SET TO: ${state.lastActivated}"
+        def initialActionOn = switches.collect{it.currentSwitch != "on"}
+        def delay = 1L
+        numFlashes.times {
+            log.trace "Switch on after  $delay msec"
+            hues.eachWithIndex {s, i ->
+                if (initialActionOn[i]) {
+                    hues*.on(delay: delay)
+                }
+                else {
+                    hues*.off(delay:delay)
+                }
+            }
+            delay += onFor
+            log.trace "Switch off after $delay msec"
+            hues.eachWithIndex {s, i ->
+                if (initialActionOn[i]) {
+                    hues*.off(delay: delay)
+                }
+                else {
+                    hues*.on(delay:delay)
+                }
+            }
+            delay += offFor
+        }
+        delay += offFor
+        updateHues(delay)
+    }
 }
