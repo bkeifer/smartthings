@@ -122,19 +122,12 @@ def checkDoors() {
         }
     }
 
-    //log.trace("checkDoors")
-    //state.contacts.each {
-        //log.debug("CONTACT: ${it.key} - ${it.value}")
-    //    if (it.value == false) {
-    //        openContacts++
-    //    }
-    //}
     if (openContacts > 0) {
         state.alerts["contact"] = true
         log.debug("Doors still open")
     } else {
-         log.debug("All doors closed")
-         state.alerts["contact"] = false
+        log.debug("All doors closed")
+        state.alerts["contact"] = false
     }
     log.trace(state)
 }
@@ -265,51 +258,4 @@ def checkForFreeze() {
         log.debug("The pipes are safe.  For now...")
     }
     log.trace(state)
-}
-
-private flashLights() {
-    def doFlash = true
-    def onFor = onFor ?: 1000
-    def offFor = offFor ?: 1000
-    def numFlashes = numFlashes ?: 3
-
-    log.debug "LAST ACTIVATED IS: ${state.lastActivated}"
-    if (state.lastActivated) {
-        def elapsed = now() - state.lastActivated
-        def sequenceTime = (numFlashes + 1) * (onFor + offFor)
-        doFlash = elapsed > sequenceTime
-        log.debug "DO FLASH: $doFlash, ELAPSED: $elapsed, LAST ACTIVATED: ${state.lastActivated}"
-    }
-
-    if (doFlash) {
-        log.debug "FLASHING $numFlashes times"
-        state.lastActivated = now()
-        log.debug "LAST ACTIVATED SET TO: ${state.lastActivated}"
-        def initialActionOn = switches.collect{it.currentSwitch != "on"}
-        def delay = 1L
-        numFlashes.times {
-            log.trace "Switch on after  $delay msec"
-            hues.eachWithIndex {s, i ->
-                if (initialActionOn[i]) {
-                    hues*.on(delay: delay)
-                }
-                else {
-                    hues*.off(delay:delay)
-                }
-            }
-            delay += onFor
-            log.trace "Switch off after $delay msec"
-            hues.eachWithIndex {s, i ->
-                if (initialActionOn[i]) {
-                    hues*.off(delay: delay)
-                }
-                else {
-                    hues*.on(delay:delay)
-                }
-            }
-            delay += offFor
-        }
-        delay += offFor
-        updateHues(delay)
-    }
 }
