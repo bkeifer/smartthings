@@ -21,7 +21,8 @@ definition(
     category: "Safety & Security",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png"
+)
 
 
 preferences {
@@ -42,16 +43,19 @@ preferences {
     }
 }
 
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
     initialize()
 }
+
 
 def updated() {
     log.debug "Updated with settings: ${settings}"
     unsubscribe()
     initialize()
 }
+
 
 def initialize() {
     unschedule()
@@ -87,21 +91,19 @@ def contactClosedHandler(evt) {
     updateHues()
 }
 
-def flash(color, int reps = 3) {
-    reps.times {
+
+def flash(color) {
+    3.times {
         turnOnToColor(color)
         pause(500)
         hues*.off()
         pause(500)
     }
-    if (leaveOn) {
-        turnOnToColor(color)
-    }
 }
 
 
-def flashToOn(color, int reps = 3) {
-    reps.times {
+def flashToOn(color) {
+    3.times {
         turnOnToColor(color)
         pause(500)
         hues*.off()
@@ -109,6 +111,7 @@ def flashToOn(color, int reps = 3) {
     }
     turnOnToColor(color)
 }
+
 
 def checkDoors() {
     log.trace("checkDoors")
@@ -140,35 +143,36 @@ def turnOnToColor(color, delay = 0) {
     def lightLevel = 100
     switch(color) {
         case "Blue":
-        hueColor = 70
-        break;
+            hueColor = 70
+            break;
         case "Green":
-        hueColor = 39
-        break;
+            hueColor = 39
+            break;
         case "Yellow":
-        hueColor = 25
-        break;
+            hueColor = 25
+            break;
         case "Orange":
-        hueColor = 10
-        break;
+            hueColor = 10
+            break;
         case "Purple":
-        hueColor = 75
-        break;
+            hueColor = 75
+            break;
         case "Pink":
-        hueColor = 83
-        break;
+            hueColor = 83
+            break;
         case "Red":
-        hueColor = 100
-        break;
+            hueColor = 100
+            break;
     }
     if (color != "On - Custom Color") {
         def newValue = [hue: hueColor, saturation: saturation, level: lightLevel as Integer ?: 100]
         hues*.setColor(newValue)
         log.debug "new value = $newValue"
-        } else {
-            hues*.on(delay: delay)
-        }
+    } else {
+        hues*.on(delay: delay)
     }
+}
+
 
 def getLowTemp() {
     def params = [
