@@ -38,6 +38,15 @@ preferences {
     section("Low temperature to trigger warning...") {
         input "lowtemp", "number", title: "In degrees F", required: false
     }
+    section("How far out should we look for freezing temps?") {
+        input "hours", "number", title: "Hours", required: false, description: 24
+    }
+    section("Days between calendar alerts...") {
+        input "caldays", "number", title: "Days", required: false
+    }
+    section("Switch to use to reset calendar alert") {
+        input "calswitch", "capability.momentary", title: "Switch", required: false, multiple: false
+    }
     section("Forecast API Key") {
         input "apikey", "text", required: false
     }
@@ -62,13 +71,17 @@ def initialize() {
     log.trace("initialize")
     state.alerts = [:]
     state.contacts = [:]
+    state.forecast = []
+    state.dogmeds = -1
 
     subscribe(app, appTouch)
     subscribe(contacts, "contact.open", contactOpenHandler)
     subscribe(contacts, "contact.closed", contactClosedHandler)
+    subscribe(calswitch, "momentary.pushed", calendarResetHandler)
 
     checkAll()
     runEvery5Minutes(checkAll)
+    runEvery15Minutes(getForecast)
 }
 
 
@@ -92,6 +105,16 @@ def contactClosedHandler(evt) {
 }
 
 
+<<<<<<< HEAD
+=======
+def calendarResetHandler(evt) {
+    log.trace("calendarResetHandler")
+    state.dogmeds = now()
+    state.alerts["dogmeds"] = false
+    checkAll()
+}
+
+>>>>>>> ForecastRewrite
 def flash(color) {
     3.times {
         turnOnToColor(color)
@@ -113,6 +136,23 @@ def flashToOn(color) {
 }
 
 
+<<<<<<< HEAD
+=======
+def checkCalendar() {
+    log.trace("checkCalendar")
+    log.debug("CAL: ${state.alerts["dogmeds"]}")
+
+    def elapsed = (now() - state["dogmeds"]) / 1000 / 60 / 60 / 24
+    log.debug("Calendar Alert Elapsed Time: ${elapsed} days" )
+    if (state.dogmeds == -1 || state.dogmeds == null || elapsed > caldays) {
+        state.alerts["dogmeds"] = true
+    } else {
+        state.alerts["dogmets"] = false
+    }
+}
+
+
+>>>>>>> ForecastRewrite
 def checkDoors() {
     log.trace("checkDoors")
     int openContacts = 0
@@ -132,7 +172,7 @@ def checkDoors() {
         log.debug("All doors closed")
         state.alerts["contact"] = false
     }
-    log.trace(state)
+    log.debug(state)
 }
 
 
@@ -211,9 +251,9 @@ def getLowTemp() {
                 }
             }
             if(resp.status == 200) {
-                log.debug "Request was OK"
+                log.debug "getLowTemp Request was OK"
             } else {
-                log.error "Request got http status ${resp.status}"
+                log.error "getLowTemp Request got http status ${resp.status}"
             }
         }
     } catch(e) {
@@ -225,8 +265,10 @@ def getLowTemp() {
 
 def appTouch(evt) {
     log.debug("TOUCHED!")
+    log.trace("STATE: ${state}")
+    log.trace("NOW: ${now()}")
+    log.trace("DIFF: ${now() - state["dogmeds"]}")
     checkAll()
-    log.trace(state)
 }
 
 
@@ -234,6 +276,7 @@ def checkAll() {
     log.trace("checkAll")
     checkForFreeze()
     checkDoors()
+    checkCalendar()
     updateHues()
 }
 
@@ -245,6 +288,8 @@ def updateHues(delay = 0) {
         flash("Red")
     } else if (state.alerts["freeze"]) {
         turnOnToColor("Blue", delay)
+    } else if(state.alerts["dogmeds"] == true) {
+        turnOnToColor("Purple", delay)
     } else {
         log.debug("turning off!  delay: ${delay}")
         hues*.off(delay: delay)
@@ -263,3 +308,48 @@ def checkForFreeze() {
     }
     log.trace(state)
 }
+<<<<<<< HEAD
+=======
+
+
+def getForecast() {
+    def params = [
+        uri: "https://api.forecast.io",
+        path: "/forecast/${apikey}/40.496754,-75.438682"
+    ]
+
+    try {
+        httpGet(params) { resp ->
+            if (resp.data) {
+                //log.debug "Response Data = ${resp.data}"
+                //log.debug "Response Status = ${resp.status}"
+                // resp.headers.each {
+                //     log.debug "header: ${it.name}: ${it.value}"
+                // }
+                resp.getData().each {
+                    if (it.key == "hourly") {
+                        def x = it.value
+                        x.each { xkey ->
+                            if (xkey.key == "data") {
+                                def y = xkey.value
+                                def templist = y["temperature"]
+
+                                for (int i = 0; i <= 48; i++) {
+                                    state.forecast[i] = templist[i]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if(resp.status == 200) {
+                log.debug "getForecast Request was OK"
+            } else {
+                log.error "getForecast Request got http status ${resp.status}"
+            }
+        }
+    } catch(e) {
+        log.debug e
+    }
+}
+>>>>>>> ForecastRewrite
