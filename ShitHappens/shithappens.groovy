@@ -41,6 +41,12 @@ preferences {
     section("How far out should we look for freezing temps?") {
         input "hours", "number", title: "Hours", required: false, description: 24
     }
+    section("Days between calendar alerts...") {
+        input "caldays", "number", title: "Days", required: false
+    }
+    section("Switch to use to reset calendar alert") {
+        input "calswitch", "capability.momentary", title: "Switch", required: false, multiple: false
+    }
     section("Forecast API Key") {
         input "apikey", "text", required: false
     }
@@ -66,10 +72,12 @@ def initialize() {
     state.alerts = [:]
     state.contacts = [:]
     state.forecast = []
+    state.dogmeds = -1
 
     subscribe(app, appTouch)
     subscribe(contacts, "contact.open", contactOpenHandler)
     subscribe(contacts, "contact.closed", contactClosedHandler)
+    subscribe(calswitch, "momentary.pushed", calendarResetHandler)
 
     checkAll()
     runEvery5Minutes(checkAll)
@@ -97,6 +105,13 @@ def contactClosedHandler(evt) {
 }
 
 
+def calendarResetHandler(evt) {
+    log.trace("calendarResetHandler")
+    state.dogmeds = now()
+    state.alerts["dogmeds"] = false
+    checkAll()
+}
+
 def flash(color) {
     3.times {
         turnOnToColor(color)
@@ -115,6 +130,20 @@ def flashToOn(color) {
         pause(500)
     }
     turnOnToColor(color)
+}
+
+
+def checkCalendar() {
+    log.trace("checkCalendar")
+    log.debug("CAL: ${state.alerts["dogmeds"]}")
+
+    def elapsed = (now() - state["dogmeds"]) / 1000 / 60 / 60 / 24
+    log.debug("Calendar Alert Elapsed Time: ${elapsed} days" )
+    if (state.dogmeds == -1 || state.dogmeds == null || elapsed > caldays) {
+        state.alerts["dogmeds"] = true
+    } else {
+        state.alerts["dogmets"] = false
+    }
 }
 
 
@@ -137,7 +166,7 @@ def checkDoors() {
         log.debug("All doors closed")
         state.alerts["contact"] = false
     }
-    log.trace(state)
+    log.debug(state)
 }
 
 
@@ -216,9 +245,9 @@ def getLowTemp() {
                 }
             }
             if(resp.status == 200) {
-                log.debug "Request was OK"
+                log.debug "getLowTemp Request was OK"
             } else {
-                log.error "Request got http status ${resp.status}"
+                log.error "getLowTemp Request got http status ${resp.status}"
             }
         }
     } catch(e) {
@@ -230,8 +259,10 @@ def getLowTemp() {
 
 def appTouch(evt) {
     log.debug("TOUCHED!")
+    log.trace("STATE: ${state}")
+    log.trace("NOW: ${now()}")
+    log.trace("DIFF: ${now() - state["dogmeds"]}")
     checkAll()
-    log.trace(state)
 }
 
 
@@ -239,6 +270,7 @@ def checkAll() {
     log.trace("checkAll")
     checkForFreeze()
     checkDoors()
+    checkCalendar()
     updateHues()
 }
 
@@ -250,6 +282,8 @@ def updateHues(delay = 0) {
         flash("Red")
     } else if (state.alerts["freeze"]) {
         turnOnToColor("Blue", delay)
+    } else if(state.alerts["dogmeds"] == true) {
+        turnOnToColor("Purple", delay)
     } else {
         log.debug("turning off!  delay: ${delay}")
         hues*.off(delay: delay)
@@ -301,9 +335,9 @@ def getForecast() {
                 }
             }
             if(resp.status == 200) {
-                log.debug "Request was OK"
+                log.debug "getForecast Request was OK"
             } else {
-                log.error "Request got http status ${resp.status}"
+                log.error "getForecast Request got http status ${resp.status}"
             }
         }
     } catch(e) {
