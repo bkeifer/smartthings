@@ -41,7 +41,7 @@ preferences {
 		input "grace", "number", title: "Minutes", required: true
 	}
     section("Send Notifications?") {
-        input("recipients", "contact", title: "Send notifications to") {
+        input("recipients", "contact", title: "Send notifications to", required: false) {
             input "phone", "phone", title: "Warn with text message (optional)",
                 description: "Phone Number", required: false
         }
@@ -59,10 +59,6 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 
-    //TODO:  THIS GOES IN INSTALLED.
-    state.lastOpen = now() - (Long.parseLong("365", 10) * 24 * 60 * 60 * 1000)
-    log.debug("lastOpen: ${state.lastOpen}")
-
 	unsubscribe()
 	initialize()
 }
@@ -74,24 +70,18 @@ def initialize() {
 	log.debug("s.cp: ${state.currentPresence}")
 }
 
-def appTouch(evt) {
-	def foo = garageDoorSensor.latestValue("contact")
-    notify("Touched again! ${foo}")
-}
-
 def presenceHandler(evt) {
-    notify("Presence detected! ${evt.value}")
+    log.debug ("Presence detected! ${evt.value}")
     if(evt.value == "present" && state.currentPresence == "not present") {
-    //if(true) {
-    	notify("evt.value is present")
+    	log.debug ("evt.value is present")
 		def gracePeriod = now() - ( grace * 60 * 1000 )
-        log.debug("diff: ${diff}")
-        notify("Grace period: ${gracePeriod}")
+        log.debug ("diff: ${diff}")
+        log.debug ("Grace period: ${gracePeriod}")
 
         if (gracePeriod > lastOpen) {
-   	        notify("Grace period check passed")
+   	        log.debug ("Grace period check passed")
 		    if (garageDoorSensor.latestValue("contact") == "closed") {
-			    notify("Opening door! ${evt.value}")
+			    notify("Opening garage door!")
 			    log.debug("Opening door!")
                 state.lastOpen = now()
 			    relay.on()
@@ -100,7 +90,6 @@ def presenceHandler(evt) {
     	state.currentPresence = evt.value
 	} else if (evt.value == "not present") {
     	log.debug("Updating presenceLeft")
-        notify("Sensor left!")
     	state.currentPresence = evt.value
 		state.presenceLeft = now()
 	}
@@ -109,13 +98,13 @@ def presenceHandler(evt) {
 def interiorDoorHandler(evt) {
     def timeDifference = now() - state.lastOpen
     if (garageDoorSensor.latestValue("contact") == "open") {
-        notify("Garage door is open.  Checking time differentials.")
+        log.debug ("Garage door is open.  Checking time differentials.")
         if (timeDifference > 30000 && timeDifference < 300000 ) {
-            notify("Interior door opened within proper window.  Closing door!")
+            log.debug ("Interior door opened within proper window.  Closing door!")
             relay.on()
         }
     } else {
-        notify("Garage door is not open.  Ignoring.")
+        log.debug ("Garage door is not open.  Ignoring.")
     }
 }
 
