@@ -14,10 +14,10 @@
  *
  */
 definition(
-    name: "LogStash Event Logger",
+    name: "Logstash Event Logger",
     namespace: "bkeifer",
     author: "Brian Keifer",
-    description: "Log SmartThings events to a LogStash server",
+    description: "Log SmartThings events to a Logstash server",
     category: "Convenience",
     iconUrl: "http://valinor.net/images/logstash-logo-square.png",
     iconX2Url: "http://valinor.net/images/logstash-logo-square.png",
@@ -103,6 +103,7 @@ def doSubscriptions() {
 }
 
 def genericHandler(evt) {
+	/*
 	log.debug("------------------------------")
 	log.debug("date: ${evt.date}")
 	log.debug("name: ${evt.name}")
@@ -122,6 +123,7 @@ def genericHandler(evt) {
     log.debug("locationId: ${evt.locationId}")
     log.debug("source: ${evt.source}")
     log.debug("unit: ${evt.unit}")
+    */
     def json = "{"
     json += "\"date\":\"${evt.date}\","
     json += "\"name\":\"${evt.name}\","
@@ -153,58 +155,4 @@ def genericHandler(evt) {
     } catch ( groovyx.net.http.HttpResponseException ex ) {
        	log.debug "Unexpected response error: ${ex.statusCode}"
     }
-}
-
-
-//private logField2(logItems) {
-//    def fieldvalues = ""
-//    def timeNow = now()
-//    timeNow = (timeNow/1000).toInteger()
-//
-//    logItems.eachWithIndex() { item, i ->
-//		def path = item[0].replace(" ","")
-//		def value = item[2]
-//
-//		def json = "{\"metric\":\"${path}\",\"value\":\"${value}\",\"measure_time\":\"${timeNow}\"}"
-//		log.debug json
-//
-//		def params = [
-//        	uri: "http://${graphite_host}:${graphite_port}/publish/${item[1]}",
-//            body: json
-//        ]
-//        try {
-//        	httpPostJson(params)// {response -> parseHttpResponse(response)}
-//        }
-//		catch ( groovyx.net.http.HttpResponseException ex ) {
-//        	log.debug "Unexpected response error: ${ex.statusCode}"
-//        }
-//	}
-//}
-
-def presenceHandler(evt) {
-	genericHandler(evt)
-}
-
-def switchHandler(evt) {
-	genericHandler(evt)
-}
-
-def contactHandler(evt) {
-	genericHandler(evt)
-}
-
-def temperatureHandler(evt) {
-	genericHandler(evt)
-}
-
-def motionHandler(evt) {
-	genericHandler(evt)
-}
-
-def modeHandler(evt) {
-	genericHandler(evt)
-}
-
-def relayHandler(evt) {
-	genericHandler(evt)
 }
