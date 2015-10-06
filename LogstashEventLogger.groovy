@@ -64,6 +64,11 @@ preferences {
     section("Log these acceleration sensors:") {
     	input "accelerations", "capability.accelerationSensor", multiple: true, required: false
     }
+    section ("Logstash Server") {
+        input "logstash_host", "text", title: "Logstash Hostname/IP"
+        input "logstash_port", "number", title: "Logstash Port"
+    }
+
 }
 
 def installed() {
@@ -85,26 +90,26 @@ def initialize() {
 }
 
 def doSubscriptions() {
-	subscribe(alarms,			"alarm",					genericHandler)
-    subscribe(codetectors,		"carbonMonoxideDetector",	genericHandler)
-	subscribe(contacts,			"contact",      			genericHandler)
-    subscribe(indicators,		"indicator",    			genericHandler)
-    subscribe(modes,			"locationMode", 			genericHandler)
-    subscribe(motions,			"motion",       			genericHandler)
-   	subscribe(presences,		"presence",     			genericHandler)
-    subscribe(relays,			"relaySwitch",  			genericHandler)
-	subscribe(smokedetectors,	"smokeDetector",			genericHandler)
-	subscribe(switches,			"switch",       			genericHandler)
-    subscribe(levels,			"level",					genericHandler)
-	subscribe(temperatures,		"temperature",  			genericHandler)
-	subscribe(waterdetectors,	"water",					genericHandler)
-    subscribe(location,			"location",					genericHandler)
-    subscribe(accelerations,    "acceleration",             genericHandler)
+	subscribe(alarms,			"alarm",					alarmHandler)
+    subscribe(codetectors,		"carbonMonoxideDetector",	coHandler)
+	subscribe(contacts,			"contact",      			contactHandler)
+    subscribe(indicators,		"indicator",    			indicatorHandler)
+    subscribe(modes,			"locationMode", 			modeHandler)
+    subscribe(motions,			"motion",       			motionHandler)
+   	subscribe(presences,		"presence",     			presenceHandler)
+    subscribe(relays,			"relaySwitch",  			relayHandler)
+	subscribe(smokedetectors,	"smokeDetector",			smokeHandler)
+	subscribe(switches,			"switch",       			switchHandler)
+    subscribe(levels,			"level",					levelHandler)
+	subscribe(temperatures,		"temperature",  			temperatureHandler)
+	subscribe(waterdetectors,	"water",					waterHandler)
+    subscribe(location,			"location",					locationHandler)
+    subscribe(accelerations,    "acceleration",             accelerationHandler)
 }
 
 def genericHandler(evt) {
-	/*
-	log.debug("------------------------------")
+    /*
+    log.debug("------------------------------")
 	log.debug("date: ${evt.date}")
 	log.debug("name: ${evt.name}")
     log.debug("displayName: ${evt.displayName}")
@@ -147,7 +152,7 @@ def genericHandler(evt) {
     log.debug("JSON: ${json}")
 
     def params = [
-    	uri: "http://graphite.valinor.net:5279",
+    	uri: "http://${logstash_host}:${logstash_port}",
         body: json
     ]
     try {
@@ -155,4 +160,64 @@ def genericHandler(evt) {
     } catch ( groovyx.net.http.HttpResponseException ex ) {
        	log.debug "Unexpected response error: ${ex.statusCode}"
     }
+}
+
+def alarmHandler(evt) {
+	genericHandler(evt)
+}
+
+def coHandler(evt) {
+	genericHandler(evt)
+}
+
+def indicatorHandler(evt) {
+	genericHandler(evt)
+}
+
+def presenceHandler(evt) {
+	genericHandler(evt)
+}
+
+def switchHandler(evt) {
+	genericHandler(evt)
+}
+
+def smokeHandler(evt) {
+	genericHandler(evt)
+}
+
+def levelHandler(evt) {
+    genericHandler(evt)
+}
+
+def contactHandler(evt) {
+	genericHandler(evt)
+}
+
+def temperatureHandler(evt) {
+	genericHandler(evt)
+}
+
+def motionHandler(evt) {
+	genericHandler(evt)
+}
+
+def modeHandler(evt) {
+	genericHandler(evt)
+}
+
+def relayHandler(evt) {
+	genericHandler(evt)
+}
+
+def waterHandler(evt) {
+	genericHandler(evt)
+}
+
+def locationHandler(evt) {
+	genericHandler(evt)
+}
+
+def accelerationHandler(evt) {
+	genericHandler(evt)
 }
