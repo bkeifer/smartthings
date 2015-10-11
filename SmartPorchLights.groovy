@@ -67,7 +67,6 @@ def initialize() {
 	subscribe(presenceSensor, "presence", arrivalHandler)
     subscribe(location, "sunriseTime", sunriseHandler)
     subscribe(location, "sunsetTime", sunsetHandler)
-    subscribe(app, sunsetHandler)
 }
 
 
@@ -83,32 +82,14 @@ def sunsetHandler(evt) {
 
 def arrivalHandler(evt) {
     if (evt.value == "present") {
-        lights?.setLevel(lvlArrival)
-        run
+        for (light in lights) {
+            if (light.CurrentValue("switch").toString() == "on") {
+                light.setLevel(lvlArrival)
+            }
+        }
     }
 }
-// def presenceHandler(evt) {
-//
-// 	if(evt.value == "present" && state.currentPresence == "not present") {
-//     //if(true) {
-// 		def gracePeriod = now() - ( grace * 60 * 1000 )
-//         log.debug("diff: ${diff}")
-//
-//         if (gracePeriod > lastOpen) {
-// 		    if (garageDoorSensor.latestValue("contact") == "closed") {
-// 			    log.debug("Opening door!")
-//                 state.lastOpen = now()
-// 			    relay.on()
-//             }
-//         }
-//     	state.currentPresence = evt.value
-// 	} else if (evt.value == "not present") {
-//     	log.debug("Updating presenceLeft")
-//     	state.currentPresence = evt.value
-// 		state.presenceLeft = now()
-// 	}
-// }
-//
+
 
 def notify(msg) {
     if (location.contactBookEnabled && recipients) {
