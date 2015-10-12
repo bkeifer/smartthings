@@ -67,6 +67,7 @@ def initialize() {
 	subscribe(presenceSensor, "presence", arrivalHandler)
     subscribe(location, "sunriseTime", sunriseHandler)
     subscribe(location, "sunsetTime", sunsetHandler)
+    subscribe(app, arrivalHandler)
 }
 
 
@@ -82,14 +83,23 @@ def sunsetHandler(evt) {
 
 def arrivalHandler(evt) {
     if (evt.value == "present") {
+        log.debug("Setting lights to arrival level.  Will dim in ${brighten.toString()} minutes.")
         for (light in lights) {
-            if (light.CurrentValue("switch").toString() == "on") {
+            if (light.currentValue("switch").toString() == "on") {
                 light.setLevel(lvlArrival)
+                runIn(brighten.toInteger() * 60, resetLevels)
             }
         }
     }
 }
 
+
+def resetLevels() {
+    log.debug("Dimming lights back to normal level.")
+    for (light in lights) {
+        light.setLevel(lvlDefault)
+    }
+}
 
 def notify(msg) {
     if (location.contactBookEnabled && recipients) {
