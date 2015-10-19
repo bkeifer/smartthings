@@ -44,17 +44,21 @@ def installed() {
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-    // atomicState.ttsCommand = textToSpeech("${settings.wakeWord}, ${settings.command}")
-    atomicState.ttsCommand = textToSpeech("${settings.command}")
-    def childSwitch = getChildDevices()
-    // def updatedName = "Echo - ${settings.command}"
-    def updatedName = "${settings.command}"
-    log.debug("Child device label: ${childSwitch.label}")
-    log.debug("New device label: ${updatedName}")
 
-    // if (childSwitch.label != updatedName) {
-    childSwitch.label = updatedName
-    // }
+    atomicState.ttsCommand = textToSpeech("${settings.wakeWord}, ${settings.command}")
+
+    def childDevices = getChildDevices()
+
+    for (childSwitch in childDevices) {
+        def updatedName = "Echo - ${settings.command}"
+
+        if (childSwitch.label != updatedName) {
+            log.debug("Name udpated!  Changing label to: ${updatedName}")
+            childSwitch.label = updatedName
+        } else {
+            log.debug("Name not updated.")
+        }
+    }
 
 	unsubscribe()
 	initialize()
@@ -70,22 +74,11 @@ def spawnChildDevice(command) {
     def now = new Date()
     def stamp = now.getTime()
     def deviceID = "TalkToAlexa_${stamp}"
-    // atomicState.deviceName = "Echo - ${command}"
-    atomicState.deviceName = "${command}"
-    log.debug("Unique Device ID: ${deviceID}")
-    log.debug("Device Name: ${atomicState.deviceName}")
-
-    def child = addChildDevice("bkeifer", "Momentary Button Tile [BTK]", deviceID, null, [name: atomicState.deviceName])
-    log.debug("Child device: ${child}")
-
+    def deviceLabel = "Echo - ${command}"
+    def child = addChildDevice("bkeifer", "Momentary Button Tile [BTK]", deviceID, null, [name: deviceID, label: deviceLabel])
 }
 
 def switchHandler(evt) {
-//    def ttsCommand = "${settings.wakeWord}, ${settings.command}"
     log.debug("Speaking: ${settings.command}")
-    log.debug("State: ${atomicState}")
-    //speech.playText(ttsCommand)
-    // speech.playTrackAndRestore(atomicState.ttsCommand.uri, atomicState.ttsCommand.duration, volume)
     speech.playTrackAndRestore(atomicState.ttsCommand.uri, atomicState.ttsCommand.duration)
-
 }
