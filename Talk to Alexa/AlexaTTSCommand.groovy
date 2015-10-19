@@ -15,7 +15,8 @@
  */
 definition(
     name: "Alexa TTS Command",
-    namespace: "bkeifer",
+    namespace: "bkeifer/AlexaTTSCommand",
+    parent: "bkeifer/TalkToAlexa:Talk to Alexa",
     author: "Brian Keifer",
     description: "Use a text-to-speech device to control Amazon Echo",
     category: "My Apps",
@@ -25,15 +26,58 @@ definition(
 
 
 preferences {
-	section("Talk to Alexa via this speaker:") {
-		input "speech", "capability.musicPlayer", required: true, multiple: false
-	}
-    section("Your Echo's wake word:") {
-        input "wakeWord", "enum", required: true, options: ["Alexa", "Amazon"]
+    page name: "mainPage", title: "New Text-to-speech Command", install: false, uninstall: true, nextPage: "namePage"
+    page name: "namePage", title: "New Text-to-speech Command", install: true, uninstall: true
+}
+
+def mainPage() {
+    dynamicPage(name: "mainPage") {
+        section {
+            inputSpeaker()
+            inputWakeWord()
+            inputCommand()
+        }
     }
-    section("Command to give Alexa (omit the wake word):") {
-        input "command", "text", required: true
+}
+
+def namePage() {
+    if (!overrideLabel) {
+        // if the user selects to not change the label, give a default label
+        def l = settings.command
+        log.debug "will set default label of $l"
+        app.updateLabel(l)
     }
+    dynamicPage(name: "namePage") {
+        if (overrideLabel) {
+            section("TTS Command Name") {
+                label title: "Enter custom name", defaultValue: app.label, required: false
+            }
+        } else {
+            section("TTS Command Name") {
+                paragraph app.label
+            }
+        }
+        section {
+            input "overrideLabel", "bool", title: "Edit TTS command name", defaultValue: "false", required: "false", submitOnChange: true
+        }
+    }
+
+}
+
+def inputSpeaker() {
+    input "speech", "capability.musicPlayer", title: "Talk to Echo via this speaker:", required: true, multiple: false
+}
+
+def inputWakeWord() {
+    input "wakeWord", "enum", title: "Your Echo's wake word:", required: true, options: ["Alexa", "Amazon"], defaultValue: "Alexa"
+}
+
+def inputCommand() {
+    input "command", "text", title: "Command to give Echo (omit the wake word):", required: true
+}
+
+def defaultLabel() {
+    return settings.command
 }
 
 def installed() {
@@ -65,6 +109,10 @@ def updated() {
 }
 
 def initialize() {
+    if (!overrideLabel) {
+        app.updateLabel(defaultLabel())
+    }
+
     subscribe(app, switchHandler)
     def childSwitch = getChildDevices()
     subscribe(childSwitch, "switch.on", switchHandler)
