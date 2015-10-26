@@ -43,6 +43,25 @@ preferences {
     	input "graphite_host", "text", title: "Graphite Hostname/IP"
         input "graphite_port", "number", title: "Graphite Port"
     }
+/*
+	section() {
+		paragraph "${generateURL("stamp").join()}"
+    			href url:"${generateURL("link").join()}", style:"embedded", required:false, title:"URL", description:"Tap to view, then click \"Done\""
+	}
+*/
+}
+
+mappings {
+  path("/stamp") {
+    action: [
+      GET: "html",
+    ]
+  }
+  path("/reschedule") {
+    action: [
+      GET: "reschedule",
+    ]
+  }
 }
 
 
@@ -59,7 +78,6 @@ def updated() {
 }
 
 def initialize() {
-
 	state.clear()
     unschedule(checkSensors)
     createSchedule()
@@ -78,6 +96,8 @@ def appTouch(evt) {
     unschedule(checkSensors)
     createSchedule()
     checkSensors()
+    log.debug(generateURL("stamp"))
+
 }
 
 
@@ -90,7 +110,7 @@ def checkSensors() {
         	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName, "temperature", Double.parseDouble(t.latestValue("temperature").toString())] )
 	        state[t.displayName + ".temp"] = t.latestValue("temperature")
-	        log.debug("[temp]     " + t.displayName + ": " + t.latestValue("temperature"))
+	        //log.debug("[temp]     " + t.displayName + ": " + t.latestValue("temperature"))
         } finally {
         	continue
         }
@@ -99,12 +119,12 @@ def checkSensors() {
        	def devName = t.displayName.replaceAll('/', '')
 		logitems.add([devName, "humidity", Double.parseDouble(t.latestValue("humidity").toString())] )
 	    state[t.displayName + ".humidity"] = t.latestValue("humidity")
-		log.debug("[humidity] " + t.displayName + ": " + t.latestValue("humidity"))
+		//log.debug("[humidity] " + t.displayName + ": " + t.latestValue("humidity"))
     }
     for (t in settings.batteries) {
     	try {
         	def devName = t.displayName.replaceAll('/', '')
-			log.debug("[battery]  " + t.displayName + ": " + t.latestValue("battery"))
+			//log.debug("[battery]  " + t.displayName + ": " + t.latestValue("battery"))
 	        logitems.add([devName, "battery", Double.parseDouble(t.latestValue("battery").toString())] )
 	        state[t.displayName + ".battery"] = t.latestValue("battery")
         } finally {
@@ -138,7 +158,7 @@ def checkSensors() {
 	        def x = new BigDecimal(t.latestValue("illuminance") ) // instanceof Double)
 	        logitems.add([devName, "illuminance", x] )
 	        state[t.displayName + ".illuminance"] = x
-			log.debug("[luminance] " + t.displayName + ": " + t.latestValue("illuminance"))
+			//log.debug("[luminance] " + t.displayName + ": " + t.latestValue("illuminance"))
         } finally {
         	continue
         }
@@ -149,7 +169,7 @@ def checkSensors() {
 	       	def devName = t.displayName.replaceAll('/', '')
 			logitems.add([devName, "switch", (t.latestValue("switch") == "on" ? 1 : 0)] )
 	        state[t.displayName + ".switch"] = (t.latestValue("switch") == "on" ? 1 : 0)
-	        log.debug("[switch] " + t.displayName + ": " + (t.latestValue("switch") == "on" ? 1 : 0))
+	        //log.debug("[switch] " + t.displayName + ": " + (t.latestValue("switch") == "on" ? 1 : 0))
         } finally {
         	continue
         }
@@ -160,15 +180,15 @@ def checkSensors() {
 	       	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName + ".heatingSetpoint", "thermostat", t.latestValue("heatingSetpoint")] )
 	        state[t.displayName + ".heatingSetpoint"] = t.latestValue("heatingSetpoint")
-	        log.debug("[thermostat] " + t.displayName + ".heatingSetpoint: " + t.latestValue("heatingSetpoint"))
+	        //log.debug("[thermostat] " + t.displayName + ".heatingSetpoint: " + t.latestValue("heatingSetpoint"))
 
 	        logitems.add([devName + ".coolingSetpoint", "thermostat", t.latestValue("coolingSetpoint")] )
 	        state[t.displayName + ".coolingSetpoint"] = t.latestValue("heatingSetpoint")
-	        log.debug("[thermostat] " + t.displayName + ".coolingSetpoint: " + t.latestValue("coolingSetpoint"))
+	        //log.debug("[thermostat] " + t.displayName + ".coolingSetpoint: " + t.latestValue("coolingSetpoint"))
 
 	        def currentStateHeat
 	        def currentStateCool
-            log.debug(t.latestValue("thermostatOperatingState"))
+            //log.debug(t.latestValue("thermostatOperatingState"))
 			switch(t.latestValue("thermostatOperatingState")) {
 	        	case("idle"):
 	            	currentStateHeat = 0
@@ -188,11 +208,11 @@ def checkSensors() {
 
 			logitems.add([devName + ".heating", "thermostat", currentStateHeat] )
 	        state[t.displayName + ".heating"] = currentStateHeat
-	        log.debug("[thermostat] " + t.displayName + ".heating: " + currentStateHeat)
+	        //log.debug("[thermostat] " + t.displayName + ".heating: " + currentStateHeat)
 
 			logitems.add([devName + ".cooling", "thermostat", currentStateCool] )
 	        state[t.displayName + ".cooling"] = currentStateCool
-	        log.debug("[thermostat] " + t.displayName + ".cooling: " + currentStateCool)
+	        //log.debug("[thermostat] " + t.displayName + ".cooling: " + currentStateCool)
         } finally {
         	continue
         }
@@ -203,15 +223,15 @@ def checkSensors() {
 	       	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName + ".power", "energy", t.latestValue("power")])
 	        state[t.displayName + ".Watts"] = t.latestValue("power")
-	        log.debug("[energy] " + t.displayName + ": " + t.latestValue("power"))
+	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("power"))
 
 	        logitems.add([devName + ".amps", "energy", t.latestValue("amps")])
 	        state[t.displayName + ".Amps"] = t.latestValue("amps")
-	        log.debug("[energy] " + t.displayName + ": " + t.latestValue("amps"))
+	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("amps"))
 
 			logitems.add([devName + ".volts", "energy", t.latestValue("volts")])
 	        state[t.displayName + ".Volts"] = t.latestValue("volts")
-	        log.debug("[energy] " + t.displayName + ": " + t.latestValue("volts"))
+	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("volts"))
         } finally {
         	continue
         }
@@ -233,18 +253,60 @@ private logField2(logItems) {
 		def value = item[2]
 
 		def json = "{\"metric\":\"${path}\",\"value\":\"${value}\",\"measure_time\":\"${timeNow}\"}"
-		log.debug json
+		//log.debug json
 
 		def params = [
         	uri: "http://${graphite_host}:${graphite_port}/publish/${item[1]}",
             body: json
         ]
         try {
-        	log.debug(params)
+        	//log.debug(params)
         	httpPostJson(params)// {response -> parseHttpResponse(response)}
         }
 		catch ( groovyx.net.http.HttpResponseException ex ) {
         	log.debug "Unexpected response error: ${ex.statusCode}"
         }
 	}
+}
+
+
+def generateURL(path) {
+	log.debug "resetOauth: $resetOauth"
+	if (resetOauth) {
+		log.debug "Reseting Access Token"
+		state.accessToken = null
+	}
+
+	if (!resetOauth && !state.accessToken || resetOauth && !state.accessToken) {
+		try {
+			createAccessToken()
+			log.debug "Creating new Access Token: $state.accessToken"
+		} catch (ex) {
+			log.error "Did you forget to enable OAuth in SmartApp IDE settings for ActiON Dashboard?"
+			log.error ex
+		}
+	}
+
+	["https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/$path", "?access_token=${state.accessToken}"]
+}
+
+
+def html() {
+    def result
+    log.trace("now: ${now()}")
+    log.trace("stamp: ${atomicState.timestamp}")
+    log.trace("diff: ${now() - state.timestamp}")
+    if (now() - state.timestamp < 1200000) {
+        result = "FIRING<br><img src=\"http://i.imgur.com/V2vEmmO.jpg\">"
+    } else {
+        result = "FAIL<br><img src=\"http://i.imgur.com/lIF0JbH.jpg\">"
+    }
+    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name}<br>Last timestamp: ${new Date(state.timestamp)}</body></html>"
+}
+
+
+def reschedule() {
+  createSchedule()
+  log.trace("Rescheduled via web API call!")
+  render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>Rescheduled ${app.name}</body></html>"
 }
