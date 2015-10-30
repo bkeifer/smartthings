@@ -64,6 +64,10 @@ preferences {
     section("Log these acceleration sensors:") {
     	input "accelerations", "capability.accelerationSensor", multiple: true, required: false
     }
+    section("Log these energy meters:") {
+        input "energymeters", "capability.energyMeter", multiple: true, required: false
+    }
+
     section ("Logstash Server") {
         input "logstash_host", "text", title: "Logstash Hostname/IP"
         input "logstash_port", "number", title: "Logstash Port"
@@ -105,6 +109,7 @@ def doSubscriptions() {
 	subscribe(waterdetectors,	"water",					waterHandler)
     subscribe(location,			"location",					locationHandler)
     subscribe(accelerations,    "acceleration",             accelerationHandler)
+    subscribe(energymeters,     "power",                    powerHandler)
 }
 
 def genericHandler(evt) {
@@ -220,4 +225,8 @@ def locationHandler(evt) {
 
 def accelerationHandler(evt) {
 	genericHandler(evt)
+}
+
+def powerHandler(evt) {
+    genericHandler(evt)
 }
