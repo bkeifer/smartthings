@@ -62,14 +62,15 @@ def initialize() {
 }
 
 
+// def motionHandler(evt) {
+//     if (evt.value == "active") {
+//         checkIntervals()
+//     }
+// }
+
+
+// private checkIntervals() {
 def motionHandler(evt) {
-    if (evt.value == "active") {
-        checkIntervals()
-    }
-}
-
-
-private checkIntervals() {
 
     // def rightNow = now()
     // log.debug "time: ${startTime_1}"
@@ -89,7 +90,9 @@ private checkIntervals() {
                 def level = settings."level_${i}"
                 log.debug("Interval ${i} matches.  Turning lights on to {$level}!")
                 stash("Turning ${lights} on to ${level}! (Interval ${i})")
-                lights?.setLevel(level)
+                if (evt.value == "active") {
+                    lights?.setLevel(level)
+                }
                 runIn(offDelay, lightsOff)
                 break
 
