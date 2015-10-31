@@ -89,7 +89,7 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 
-    atomicState.ttsCommand = textToSpeech("${settings.wakeWord}, ${settings.command}")
+    state.ttsCommand = textToSpeech("${settings.wakeWord}, ${settings.command}")
 
     def childDevices = getChildDevices()
 
@@ -123,10 +123,10 @@ def spawnChildDevice(command) {
     def stamp = now.getTime()
     def deviceID = "TalkToAlexa_${stamp}"
     def deviceLabel = "Echo - ${command}"
-    def child = addChildDevice("bkeifer", "Momentary Button Tile [BTK]", deviceID, null, [name: deviceID, label: deviceLabel])
+    def child = addChildDevice("smartthings", "Momentary Button Tile", deviceID, null, [name: deviceID, label: deviceLabel])
 }
 
 def switchHandler(evt) {
     log.debug("Speaking: ${settings.command}")
-    speech.playTrackAndRestore(atomicState.ttsCommand.uri, atomicState.ttsCommand.duration)
+    speech.playTrackAndRestore(state.ttsCommand.uri, state.ttsCommand.duration)
 }
