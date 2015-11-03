@@ -58,44 +58,38 @@ def updated() {
 
 
 def initialize() {
-	subscribe(motionSensor, "motion", motionHandler)
+	subscribe(motionSensor, "motion.active", motionActiveHandler)
+    subscribe(motionSensor, "motion.inactive", motionInactiveHandler)
 }
 
 
-// def motionHandler(evt) {
-//     if (evt.value == "active") {
-//         checkIntervals()
-//     }
-// }
+def motionInactiveHandler(evt) {
+    stash("Motion has stopped.  Turning lights off in ${state.offDelay} seconds.")
+    runIn(state.offDelay, lightsOff)
+    state.scheduled = true
+}
 
 
-// private checkIntervals() {
-def motionHandler(evt) {
+def motionActiveHandler(evt) {
+    def i = getInterval()
+    def level = settings."level_${i}"
+    state.offDelay = settings."duration_${i}" * 60
+    stash("Turning ${lights} on to ${level}!  When motion stops, will turn off in ${state.offDelay} seconds.  (Interval ${i})")
+    lights?.setLevel(level)
+    if (state.scheduled) {
+        unschedule()
+        state.scheduled = false
+    }
+}
 
-    // def rightNow = now()
-    // log.debug "time: ${startTime_1}"
-    // log.debug "timeToday(now): " + timeToday(startTime_1)
-    // log.debug "timeToday(now, location.timeZone): " + timeToday(startTime_1, location.timeZone)
-    // log.debug "The time zone for this location is: ${location.timeZone}"
-    // log.debug "The zip code for this location: ${location.zipCode}"
-    // log.debug ""
+
+private getInterval() {
     for (int i = 4; i > 0; i--) {
         if (settings."startTime_${i}" && settings."endTime_${i}" && settings."duration_${i}") {
-
             log.debug("startTime_${i}: " + timeToday(settings."startTime_${i}", location.timeZone))
             log.debug("endTime_${i}: " + timeToday(settings."endTime_${i}", location.timeZone))
-
             if (timeInRange(i)) {
-                def offDelay = settings."duration_${i}" * 60
-                def level = settings."level_${i}"
-                log.debug("Interval ${i} matches.  Turning lights on to {$level}!")
-                stash("Turning ${lights} on to ${level}! (Interval ${i})")
-                if (evt.value == "active") {
-                    lights?.setLevel(level)
-                }
-                runIn(offDelay, lightsOff)
-                break
-
+                return i
             }
         }
     }
@@ -121,8 +115,8 @@ def lightsOff() {
 
 def stash(msg) {
 	log.debug(msg)
-	TimeZone.setDefault(TimeZone.getTimeZone('UTC'))
 	def dateNow = new Date()
+    // def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", location.timeZone)
     def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     def json = "{"
     json += "\"date\":\"${dateNow}\","
