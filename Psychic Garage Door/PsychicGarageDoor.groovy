@@ -46,10 +46,15 @@ preferences {
                 description: "Phone Number", required: false
         }
     }
+    section ("Logstash Server") {
+        input "logstash_host", "text", title: "Logstash Hostname/IP"
+        input "logstash_port", "number", title: "Logstash Port"
+    }
+
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	stash "Installed with settings: ${settings}"
 	state.currentPresence = presenceSensor.latestValue("presence")
 	state.presenceLeft = 0
     state.lastOpen = 0
@@ -57,7 +62,7 @@ def installed() {
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	stash "Updated with settings: ${settings}"
 
 	unsubscribe()
 	initialize()
@@ -67,11 +72,11 @@ def initialize() {
 	subscribe(presenceSensor, "presence", presenceHandler)
     subscribe(app, presenceHandler)
     subscribe(interiorDoorSensor, "contact.open", interiorDoorHandler)
-	log.debug("s.cp: ${state.currentPresence}")
+    state.waitingForInteriorDoor = false
 }
 
 def presenceHandler(evt) {
-    log.debug ("Presence detected! ${evt.value}")
+    stash ("Presence detected! ${evt.value}")
     if(evt.value == "present" && state.currentPresence == "not present") {
     	log.debug ("evt.value is present")
 		def gracePeriod = now() - ( grace * 60 * 1000 )
@@ -79,17 +84,18 @@ def presenceHandler(evt) {
         log.debug ("Grace period: ${gracePeriod}")
 
         if (gracePeriod > lastOpen) {
-   	        log.debug ("Grace period check passed")
+   	        stash ("Grace period check passed")
 		    if (garageDoorSensor.latestValue("contact") == "closed") {
 			    notify("Opening garage door!")
-			    log.debug("Opening door!")
+			    stash("Opening door!")
+                state.waitingForInteriorDoor = true
                 state.lastOpen = now()
 			    relay.on()
             }
         }
     	state.currentPresence = evt.value
 	} else if (evt.value == "not present") {
-    	log.debug("Updating presenceLeft")
+    	stash("Updating presenceLeft")
     	state.currentPresence = evt.value
 		state.presenceLeft = now()
 	}
@@ -98,13 +104,14 @@ def presenceHandler(evt) {
 def interiorDoorHandler(evt) {
     def timeDifference = now() - state.lastOpen
     if (garageDoorSensor.latestValue("contact") == "open") {
-        log.debug ("Garage door is open.  Checking time differentials.")
-        if (timeDifference > 30000 && timeDifference < 300000 ) {
-            log.debug ("Interior door opened within proper window.  Closing door!")
+        stash ("Garage door is open.  Checking time differentials.")
+        if (timeDifference > 30000 && timeDifference < 300000 && state.waitingForInteriorDoor == true) {
+            stash ("Interior door opened within proper window.  Closing door!")
             relay.on()
+            state.waitingForInteriorDoor = false
         }
     } else {
-        log.debug ("Garage door is not open.  Ignoring.")
+        stash ("Garage door is not open.  Ignoring.")
     }
 }
 
@@ -115,4 +122,26 @@ def notify(msg) {
         sendSms(phone, msg)
     }
 
+}
+
+def stash(msg) {
+	log.debug(msg)
+	def dateNow = new Date()
+    def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    def json = "{"
+    json += "\"date\":\"${dateNow}\","
+    json += "\"isoDate\":\"${isoDateNow}\","
+    json += "\"name\":\"log\","
+    json += "\"message\":\"${msg}\","
+    json += "\"smartapp\":\"${app.name}\""
+    json += "}"
+    def params = [
+    	uri: "http://${logstash_host}:${logstash_port}",
+        body: json
+    ]
+    try {
+        httpPostJson(params)
+    } catch ( groovyx.net.http.HttpResponseException ex ) {
+       	log.debug "Unexpected response error: ${ex.statusCode}"
+    }
 }
