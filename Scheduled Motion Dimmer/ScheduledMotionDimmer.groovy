@@ -40,6 +40,11 @@ preferences {
             input "duration_${i}", "number", title: "Minutes to keep the light on after motion stops:", defaultValue:5, required: false
         }
     }
+
+    section ("Logstash Server") {
+        input "logstash_host", "text", title: "Logstash Hostname/IP"
+        input "logstash_port", "number", title: "Logstash Port"
+    }
 }
 
 
@@ -64,9 +69,20 @@ def initialize() {
 
 
 def motionInactiveHandler(evt) {
-    stash("Motion has stopped.  Turning lights off in ${state.offDelay} seconds.")
-    runIn(state.offDelay, lightsOff)
-    state.scheduled = true
+
+    def allQuiet = true
+
+    motionSensor.each {
+        if (it.currentValue == "active") {
+            allQuiet == false
+        }
+    }
+
+    if (allQuiet) {
+        stash("Motion has stopped on all sensors.  Turning lights off in ${state.offDelay} seconds.")
+        runIn(state.offDelay, lightsOff)
+        state.scheduled = true
+    }
 }
 
 
@@ -126,7 +142,7 @@ def stash(msg) {
     json += "\"smartapp\":\"${app.name}\""
     json += "}"
     def params = [
-    	uri: "http://graphite.valinor.net:5279",
+    	uri: "http://${logstash_host}:${logstash_port}",
         body: json
     ]
     try {
