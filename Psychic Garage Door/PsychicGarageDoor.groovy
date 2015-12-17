@@ -46,10 +46,9 @@ preferences {
                 description: "Phone Number", required: false
         }
     }
-    section ("Control Switch") {
-        input "controlSwitch", "capability.switch", multiple: true, required: false
-    }
-    section ("Logstash Server") {
+
+    section (hideable: true, "Advanced Settings") {
+        input "controlSwitch", "capability.switch", title: "Only run if ALL of the following switches are on:", multiple: true, required: false
         input "logstash_host", "text", title: "Logstash Hostname/IP"
         input "logstash_port", "number", title: "Logstash Port"
     }
