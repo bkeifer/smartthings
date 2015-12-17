@@ -44,6 +44,32 @@ preferences {
     }
 }
 
+mappings {
+  path("/stamp") {
+    action: [
+      GET: "checkStamp",
+    ]
+  }
+  path("/reschedule") {
+    action: [
+      GET: "reschedule",
+    ]
+  }
+}
+
+
+def updateState() {
+	log.debug("State updated!")
+    state.timestamp = now()
+}
+
+
+def createSchedule() {
+    unschedule()
+    updateState()
+    runEvery5Minutes(updateAmbientHumidity)
+}
+
 def installed() {
 	stash "Installed with settings: ${settings}"
     state.ambientHumidity = []
@@ -64,7 +90,8 @@ def updated() {
 def initialize() {
     subscribe(sensor, "humidity", eventHandler)
     subscribe(app, appTouch)
-    runEvery5Minutes(updateAmbientHumidity)
+    createSchedule()
+    logURLs()
 }
 
 def appTouch(evt) {
@@ -96,6 +123,42 @@ def updateAmbientHumidity() {
     stash("Rolling ambient humidity average: ${state.ambientHumidity.sum() / state.ambientHumidity.size()}")
 
 }
+
+
+def logURLs() {
+	if (!state.accessToken) {
+		try {
+			createAccessToken()
+			log.debug "Token: $state.accessToken"
+		} catch (e) {
+			log.debug("Error.  Is OAuth enabled?")
+		}
+	}
+    def baseURL = "https://graph.api.smartthings.com/api/smartapps/installations"
+	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}"
+	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}"
+}
+
+
+def checkStamp() {
+    def result
+    # 300000 = 5 minutes in milliseconds.  Replace with a value of at least
+    # 2x the frequency at which your scheduled function should run.
+    if (now() - state.timestamp < 300000) {
+        result = "FIRING"
+    } else {
+        result = "FAIL"
+    }
+    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name}<br>Last timestamp: ${new Date(state.timestamp)}</body></html>"
+}
+
+
+def reschedule() {
+  createSchedule()
+  log.trace("Rescheduled via web API call!")
+  render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>Rescheduled ${app.name}</body></html>"
+}
+
 
 def stash(msg) {
 	log.debug(msg)
