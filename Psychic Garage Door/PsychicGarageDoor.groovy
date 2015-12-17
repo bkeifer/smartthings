@@ -46,6 +46,9 @@ preferences {
                 description: "Phone Number", required: false
         }
     }
+    section ("Control Switch") {
+        input "controlSwitch", "capability.switch", multiple: true, required: false
+    }
     section ("Logstash Server") {
         input "logstash_host", "text", title: "Logstash Hostname/IP"
         input "logstash_port", "number", title: "Logstash Port"
@@ -76,42 +79,51 @@ def initialize() {
 }
 
 def presenceHandler(evt) {
-    stash ("Presence detected! ${evt.value}")
-    if(evt.value == "present" && state.currentPresence == "not present") {
-    	log.debug ("evt.value is present")
-		def gracePeriod = now() - ( grace * 60 * 1000 )
-        log.debug ("diff: ${diff}")
-        log.debug ("Grace period: ${gracePeriod}")
+    if (controlSwitchesAllOn) {
+        stash ("Presence detected! ${evt.value}")
+        if(evt.value == "present" && state.currentPresence == "not present") {
+        	log.debug ("evt.value is present")
+    		def gracePeriod = now() - ( grace * 60 * 1000 )
+            log.debug ("diff: ${diff}")
+            log.debug ("Grace period: ${gracePeriod}")
 
-        if (gracePeriod > lastOpen) {
-   	        stash ("Grace period check passed")
-		    if (garageDoorSensor.latestValue("contact") == "closed") {
-			    notify("Opening garage door!")
-			    stash("Opening door!")
-                state.waitingForInteriorDoor = true
-                state.lastOpen = now()
-			    relay.on()
+            if (gracePeriod > lastOpen) {
+       	        stash ("Grace period check passed")
+    		    if (garageDoorSensor.latestValue("contact") == "closed") {
+    			    notify("Opening garage door!")
+    			    stash("Opening door!")
+                    state.waitingForInteriorDoor = true
+                    state.lastOpen = now()
+    			    relay.on()
+                }
             }
-        }
-    	state.currentPresence = evt.value
-	} else if (evt.value == "not present") {
-    	stash("Updating presenceLeft")
-    	state.currentPresence = evt.value
-		state.presenceLeft = now()
-	}
+        	state.currentPresence = evt.value
+    	} else if (evt.value == "not present") {
+        	stash("Updating presenceLeft")
+        	state.currentPresence = evt.value
+    		state.presenceLeft = now()
+    	}
+    } else {
+        stash ("Control switch(es) disabled.  Skipping presenceHandler")
+    }
+
 }
 
 def interiorDoorHandler(evt) {
-    def timeDifference = now() - state.lastOpen
-    if (garageDoorSensor.latestValue("contact") == "open") {
-        stash ("Garage door is open.  Checking time differentials.")
-        if (timeDifference > 30000 && timeDifference < 300000 && state.waitingForInteriorDoor == true) {
-            stash ("Interior door opened within proper window.  Closing door!")
-            relay.on()
-            state.waitingForInteriorDoor = false
+    if (controlSwitchesAllOn) {
+        def timeDifference = now() - state.lastOpen
+        if (garageDoorSensor.latestValue("contact") == "open") {
+            stash ("Garage door is open.  Checking time differentials.")
+            if (timeDifference > 30000 && timeDifference < 300000 && state.waitingForInteriorDoor == true) {
+                stash ("Interior door opened within proper window.  Closing door!")
+                relay.on()
+                state.waitingForInteriorDoor = false
+            }
+        } else {
+            stash ("Garage door is not open.  Ignoring.")
         }
     } else {
-        stash ("Garage door is not open.  Ignoring.")
+        stash ("Control switch(es) disabled.  Skipping interiorDoorHandler")
     }
 }
 
@@ -122,6 +134,16 @@ def notify(msg) {
         sendSms(phone, msg)
     }
 
+}
+
+def controlSwitchesAllOn() {
+    def allOn = true
+    controlSwitch?.each {
+        if (it.currentSwitch != "on") {
+            allOn = false
+        }
+    }
+    return allOn
 }
 
 def stash(msg) {
