@@ -53,8 +53,26 @@ preferences {
 }
 
 
+mappings {
+  path("/stamp") {
+    action: [
+      GET: "html",
+    ]
+  }
+  path("/reschedule") {
+    action: [
+      GET: "reschedule",
+    ]
+  }
+}
+
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
+    state.alerts = [:]
+    state.contacts = [:]
+    state.forecast = []
+    state.dogmeds = -1
     initialize()
 }
 
@@ -67,19 +85,20 @@ def updated() {
 
 
 def initialize() {
-    unschedule()
     log.trace("initialize")
-    state.alerts = [:]
-    state.contacts = [:]
-    state.forecast = []
-    state.dogmeds = -1
-
     subscribe(app, appTouch)
     subscribe(contacts, "contact.open", contactOpenHandler)
     subscribe(contacts, "contact.closed", contactClosedHandler)
     subscribe(calswitch, "momentary.pushed", calendarResetHandler)
+	logURLs()
+    createSchedule()
+}
 
+
+def createSchedule() {
+	unschedule()
     checkAll()
+    getForecast()
     runEvery5Minutes(checkAll)
     runEvery15Minutes(getForecast)
 }
@@ -105,8 +124,6 @@ def contactClosedHandler(evt) {
 }
 
 
-<<<<<<< HEAD
-=======
 def calendarResetHandler(evt) {
     log.trace("calendarResetHandler")
     state.dogmeds = now()
@@ -114,7 +131,6 @@ def calendarResetHandler(evt) {
     checkAll()
 }
 
->>>>>>> ForecastRewrite
 def flash(color) {
     3.times {
         turnOnToColor(color)
@@ -126,7 +142,7 @@ def flash(color) {
 
 
 def flashToOn(color) {
-    3.times {
+    2.times {
         turnOnToColor(color)
         pause(500)
         hues*.off()
@@ -136,8 +152,6 @@ def flashToOn(color) {
 }
 
 
-<<<<<<< HEAD
-=======
 def checkCalendar() {
     log.trace("checkCalendar")
     log.debug("CAL: ${state.alerts["dogmeds"]}")
@@ -147,12 +161,11 @@ def checkCalendar() {
     if (state.dogmeds == -1 || state.dogmeds == null || elapsed > caldays) {
         state.alerts["dogmeds"] = true
     } else {
-        state.alerts["dogmets"] = false
+        state.alerts["dogmeds"] = false
     }
 }
 
 
->>>>>>> ForecastRewrite
 def checkDoors() {
     log.trace("checkDoors")
     int openContacts = 0
@@ -269,6 +282,7 @@ def appTouch(evt) {
     log.trace("NOW: ${now()}")
     log.trace("DIFF: ${now() - state["dogmeds"]}")
     checkAll()
+    log.debug(generateURL("stamp"))
 }
 
 
@@ -278,6 +292,7 @@ def checkAll() {
     checkDoors()
     checkCalendar()
     updateHues()
+    atomicState.timestamp = now()
 }
 
 
@@ -308,8 +323,6 @@ def checkForFreeze() {
     }
     log.trace(state)
 }
-<<<<<<< HEAD
-=======
 
 
 def getForecast() {
@@ -318,7 +331,7 @@ def getForecast() {
         path: "/forecast/${apikey}/40.496754,-75.438682"
     ]
 
-    try {
+	try {
         httpGet(params) { resp ->
             if (resp.data) {
                 //log.debug "Response Data = ${resp.data}"
@@ -352,4 +365,54 @@ def getForecast() {
         log.debug e
     }
 }
->>>>>>> ForecastRewrite
+
+
+def generateURL(path) {
+	if (!state.accessToken) {
+		try {
+			createAccessToken()
+			log.debug "Creating new Access Token: $state.accessToken"
+		} catch (ex) {
+			log.error "Did you forget to enable OAuth in SmartApp IDE settings for ActiON Dashboard?"
+			log.error ex
+		}
+	}
+
+	["https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/$path", "?access_token=${state.accessToken}"]
+}
+
+
+def logURLs() {
+	if (!state.accessToken) {
+		try {
+			createAccessToken()
+			log.debug "Token: $state.accessToken"
+		} catch (e) {
+			log.debug("Error.  Is OAuth enabled?")
+		}
+	}
+    def baseURL = "https://graph.api.smartthings.com/api/smartapps/installations"
+	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}"
+	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}"
+}
+
+
+def html() {
+    def result
+    log.trace("forecast: ${atomicState.fctimestamp}")
+    log.trace("now: ${now()}")
+    log.trace("stamp: ${atomicState.timestamp}")
+    log.trace("diff: ${now() - atomicState.timestamp}")
+    if (now() - atomicState.timestamp < 1200000) {
+        result = "FIRING"
+    } else {
+        result = "FAIL"
+    }
+    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name} - Main<br>Last timestamp: ${new Date(atomicState.timestamp)}</body></html>"
+}
+
+def reschedule() {
+  createSchedule()
+  log.trace("Rescheduled via web API call!")
+  render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>Rescheduled ${app.name}</body></html>"
+}
