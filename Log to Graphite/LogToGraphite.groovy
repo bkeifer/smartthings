@@ -82,6 +82,9 @@ def initialize() {
     unschedule(checkSensors)
     createSchedule()
     subscribe(app, appTouch)
+    atomicState.timestamp = now()
+    logURLs()
+    log.debug("timestamp: ${atomicState.timestamp}")
 }
 
 
@@ -109,7 +112,7 @@ def checkSensors() {
     	try {
         	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName, "temperature", Double.parseDouble(t.latestValue("temperature").toString())] )
-	        state[t.displayName + ".temp"] = t.latestValue("temperature")
+	        atomicState[t.displayName + ".temp"] = t.latestValue("temperature")
 	        //log.debug("[temp]     " + t.displayName + ": " + t.latestValue("temperature"))
         } finally {
         	continue
@@ -118,7 +121,7 @@ def checkSensors() {
     for (t in settings.humidities) {
        	def devName = t.displayName.replaceAll('/', '')
 		logitems.add([devName, "humidity", Double.parseDouble(t.latestValue("humidity").toString())] )
-	    state[t.displayName + ".humidity"] = t.latestValue("humidity")
+	    atomicState[t.displayName + ".humidity"] = t.latestValue("humidity")
 		//log.debug("[humidity] " + t.displayName + ": " + t.latestValue("humidity"))
     }
     for (t in settings.batteries) {
@@ -126,7 +129,7 @@ def checkSensors() {
         	def devName = t.displayName.replaceAll('/', '')
 			//log.debug("[battery]  " + t.displayName + ": " + t.latestValue("battery"))
 	        logitems.add([devName, "battery", Double.parseDouble(t.latestValue("battery").toString())] )
-	        state[t.displayName + ".battery"] = t.latestValue("battery")
+	        atomicState[t.displayName + ".battery"] = t.latestValue("battery")
         } finally {
         	continue
         }
@@ -136,7 +139,7 @@ def checkSensors() {
 		try {
 	       	def devName = t.displayName.replaceAll('/', '')
 			logitems.add([devName, "contact", t.latestValue("contact")] )
-	        state[t.displayName + ".contact"] = t.latestValue("contact")
+	        atomicState[t.displayName + ".contact"] = t.latestValue("contact")
         } finally {
         	continue
         }
@@ -146,7 +149,7 @@ def checkSensors() {
 		try {
 	       	def devName = t.displayName.replaceAll('/', '')
 			logitems.add([devName, "motion", t.latestValue("motion")] )
-	        state[t.displayName + ".motion"] = t.latestValue("motion")
+	        atomicState[t.displayName + ".motion"] = t.latestValue("motion")
         } finally {
         	continue
         }
@@ -157,7 +160,7 @@ def checkSensors() {
 	       	def devName = t.displayName.replaceAll('/', '')
 	        def x = new BigDecimal(t.latestValue("illuminance") ) // instanceof Double)
 	        logitems.add([devName, "illuminance", x] )
-	        state[t.displayName + ".illuminance"] = x
+	        atomicState[t.displayName + ".illuminance"] = x
 			//log.debug("[luminance] " + t.displayName + ": " + t.latestValue("illuminance"))
         } finally {
         	continue
@@ -168,7 +171,7 @@ def checkSensors() {
 		try {
 	       	def devName = t.displayName.replaceAll('/', '')
 			logitems.add([devName, "switch", (t.latestValue("switch") == "on" ? 1 : 0)] )
-	        state[t.displayName + ".switch"] = (t.latestValue("switch") == "on" ? 1 : 0)
+	        atomicState[t.displayName + ".switch"] = (t.latestValue("switch") == "on" ? 1 : 0)
 	        //log.debug("[switch] " + t.displayName + ": " + (t.latestValue("switch") == "on" ? 1 : 0))
         } finally {
         	continue
@@ -179,11 +182,11 @@ def checkSensors() {
     	try {
 	       	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName + ".heatingSetpoint", "thermostat", t.latestValue("heatingSetpoint")] )
-	        state[t.displayName + ".heatingSetpoint"] = t.latestValue("heatingSetpoint")
+	        atomicState[t.displayName + ".heatingSetpoint"] = t.latestValue("heatingSetpoint")
 	        //log.debug("[thermostat] " + t.displayName + ".heatingSetpoint: " + t.latestValue("heatingSetpoint"))
 
 	        logitems.add([devName + ".coolingSetpoint", "thermostat", t.latestValue("coolingSetpoint")] )
-	        state[t.displayName + ".coolingSetpoint"] = t.latestValue("heatingSetpoint")
+	        atomicState[t.displayName + ".coolingSetpoint"] = t.latestValue("heatingSetpoint")
 	        //log.debug("[thermostat] " + t.displayName + ".coolingSetpoint: " + t.latestValue("coolingSetpoint"))
 
 	        def currentStateHeat
@@ -207,11 +210,11 @@ def checkSensors() {
 	        }
 
 			logitems.add([devName + ".heating", "thermostat", currentStateHeat] )
-	        state[t.displayName + ".heating"] = currentStateHeat
+	        atomicState[t.displayName + ".heating"] = currentStateHeat
 	        //log.debug("[thermostat] " + t.displayName + ".heating: " + currentStateHeat)
 
 			logitems.add([devName + ".cooling", "thermostat", currentStateCool] )
-	        state[t.displayName + ".cooling"] = currentStateCool
+	        atomicState[t.displayName + ".cooling"] = currentStateCool
 	        //log.debug("[thermostat] " + t.displayName + ".cooling: " + currentStateCool)
         } finally {
         	continue
@@ -222,15 +225,15 @@ def checkSensors() {
     	try {
 	       	def devName = t.displayName.replaceAll('/', '')
 	        logitems.add([devName + ".power", "energy", t.latestValue("power")])
-	        state[t.displayName + ".Watts"] = t.latestValue("power")
+	        atomicState[t.displayName + ".Watts"] = t.latestValue("power")
 	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("power"))
 
 	        logitems.add([devName + ".amps", "energy", t.latestValue("amps")])
-	        state[t.displayName + ".Amps"] = t.latestValue("amps")
+	        atomicState[t.displayName + ".Amps"] = t.latestValue("amps")
 	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("amps"))
 
 			logitems.add([devName + ".volts", "energy", t.latestValue("volts")])
-	        state[t.displayName + ".Volts"] = t.latestValue("volts")
+	        atomicState[t.displayName + ".Volts"] = t.latestValue("volts")
 	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("volts"))
         } finally {
         	continue
@@ -238,7 +241,7 @@ def checkSensors() {
 	}
 
 	logField2(logitems)
-    state.timestamp = now()
+    atomicState.timestamp = now()
 
 }
 
@@ -274,34 +277,49 @@ def generateURL(path) {
 	log.debug "resetOauth: $resetOauth"
 	if (resetOauth) {
 		log.debug "Reseting Access Token"
-		state.accessToken = null
+		atomicState.accessToken = null
 	}
 
-	if (!resetOauth && !state.accessToken || resetOauth && !state.accessToken) {
+	if (!resetOauth && !atomicState.accessToken || resetOauth && !atomicState.accessToken) {
 		try {
 			createAccessToken()
-			log.debug "Creating new Access Token: $state.accessToken"
+			log.debug "Creating new Access Token: $atomicState.accessToken"
 		} catch (ex) {
 			log.error "Did you forget to enable OAuth in SmartApp IDE settings for ActiON Dashboard?"
 			log.error ex
 		}
 	}
 
-	["https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/$path", "?access_token=${state.accessToken}"]
+	["https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/$path", "?access_token=${atomicState.accessToken}"]
+}
+
+
+def logURLs() {
+	if (!state.accessToken) {
+		try {
+			createAccessToken()
+			log.debug "Token: $state.accessToken"
+		} catch (e) {
+			log.debug("Error.  Is OAuth enabled?")
+		}
+	}
+    def baseURL = "https://graph.api.smartthings.com/api/smartapps/installations"
+	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}"
+	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}"
 }
 
 
 def html() {
     def result
-    log.trace("now: ${now()}")
-    log.trace("stamp: ${atomicState.timestamp}")
-    log.trace("diff: ${now() - state.timestamp}")
-    if (now() - state.timestamp < 1200000) {
+    //log.trace("now: ${now()}")
+    //log.trace("stamp: ${atomicState.timestamp}")
+    //log.trace("diff: ${now() - atomicState.timestamp}")
+    if (now() - atomicState.timestamp.toInteger() < 1200000) {
         result = "FIRING<br><img src=\"http://i.imgur.com/V2vEmmO.jpg\">"
     } else {
         result = "FAIL<br><img src=\"http://i.imgur.com/lIF0JbH.jpg\">"
     }
-    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name}<br>Last timestamp: ${new Date(state.timestamp)}</body></html>"
+    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name}<br>Last timestamp: ${new Date(atomicState.timestamp)}</body></html>"
 }
 
 
