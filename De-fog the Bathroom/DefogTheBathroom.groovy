@@ -37,16 +37,25 @@ preferences {
     section("Turn off when humidity goes below:") {
         input "humidityLow", "number", title: "%", required: true
     }
+
+    section ("Logstash Server") {
+        input "logstash_host", "text", title: "Logstash Hostname/IP"
+        input "logstash_port", "number", title: "Logstash Port"
+    }
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
-
+	stash "Installed with settings: ${settings}"
+    state.ambientHumidity = []
 	initialize()
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	stash "Updated with settings: ${settings}"
+    if (!state.ambientHumidity) {
+        log.debug("Initializing array.")
+        state.ambientHumidity = []
+    }
 
 	unsubscribe()
 	initialize()
@@ -54,16 +63,59 @@ def updated() {
 
 def initialize() {
     subscribe(sensor, "humidity", eventHandler)
+    subscribe(app, appTouch)
+    runEvery5Minutes(updateAmbientHumidity)
+}
+
+def appTouch(evt) {
+    updateAmbientHumidity()
 }
 
 def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
 
-    if (eventValue >= humidityHigh) {
-        log.debug("Humidity (${eventValue}) is above threshold of ${humidityHigh}.  Turning the fan ON.")
+    if (eventValue >= humidityHigh && fanSwitch.currentSwitch == "off") {
+        stash("Humidity (${eventValue}) is above threshold of ${humidityHigh}.  Turning the fan ON.")
         fanSwitch.on()
-    } else if (eventValue <= humidityLow) {
-        log.debug("Humidity (${eventValue}) is below lower threshold of ${humidityHigh}.  Turning the fan OFF.")
+    } else if (eventValue <= humidityLow && fanSwitch.currentSwitch == "on") {
+        stash("Humidity (${eventValue}) is below lower threshold of ${humidityHigh}.  Turning the fan OFF.")
         fanSwitch.off()
+    }
+}
+
+def updateAmbientHumidity() {
+    def q = state.ambientHumidity as Queue
+    q.add(sensor.currentHumidity)
+
+    while (q.size () > 288) {
+        q.poll()
+    }
+
+    state.ambientHumidity = q
+
+    stash("Rolling ambient humidity average: ${state.ambientHumidity.sum() / state.ambientHumidity.size()}")
+
+}
+
+def stash(msg) {
+	log.debug(msg)
+	def dateNow = new Date()
+    // def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", location.timeZone)
+    def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    def json = "{"
+    json += "\"date\":\"${dateNow}\","
+    json += "\"isoDate\":\"${isoDateNow}\","
+    json += "\"name\":\"log\","
+    json += "\"message\":\"${msg}\","
+    json += "\"smartapp\":\"${app.name}\""
+    json += "}"
+    def params = [
+    	uri: "http://${logstash_host}:${logstash_port}",
+        body: json
+    ]
+    try {
+        httpPostJson(params)
+    } catch ( groovyx.net.http.HttpResponseException ex ) {
+       	log.debug "Unexpected response error: ${ex.statusCode}"
     }
 }
