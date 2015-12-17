@@ -78,7 +78,7 @@ def updated() {
 }
 
 def initialize() {
-	state.clear()
+	atomicState.clear()
     unschedule(checkSensors)
     createSchedule()
     subscribe(app, appTouch)
@@ -105,7 +105,7 @@ def appTouch(evt) {
 
 
 def checkSensors() {
-
+    log.debug("Starting checkSensors()")
     def logitems = []
 
     for (t in settings.temperatures) {
@@ -241,6 +241,7 @@ def checkSensors() {
 	}
 
 	logField2(logitems)
+    log.debug("Updating timestamp")
     atomicState.timestamp = now()
 
 }
@@ -295,31 +296,31 @@ def generateURL(path) {
 
 
 def logURLs() {
-	if (!state.accessToken) {
+	if (!atomicState.accessToken) {
 		try {
 			createAccessToken()
-			log.debug "Token: $state.accessToken"
+			log.debug "Token: $atomicState.accessToken"
 		} catch (e) {
 			log.debug("Error.  Is OAuth enabled?")
 		}
 	}
     def baseURL = "https://graph.api.smartthings.com/api/smartapps/installations"
-	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}"
-	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}"
+	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${atomicState.accessToken}"
+	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${atomicState.accessToken}"
 }
 
 
 def html() {
     def result
-    //log.trace("now: ${now()}")
-    //log.trace("stamp: ${atomicState.timestamp}")
-    //log.trace("diff: ${now() - atomicState.timestamp}")
-    if (now() - atomicState.timestamp.toInteger() < 1200000) {
-        result = "FIRING<br><img src=\"http://i.imgur.com/V2vEmmO.jpg\">"
+    log.trace("now: ${now()}")
+    log.trace("stamp: ${atomicState.timestamp}")
+    log.trace("diff: ${now() - atomicState.timestamp}")
+    if (now() - atomicState.timestamp < 1200000) {
+        result = "FIRING"
     } else {
-        result = "FAIL<br><img src=\"http://i.imgur.com/lIF0JbH.jpg\">"
+        result = "FAIL"
     }
-    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name}<br>Last timestamp: ${new Date(atomicState.timestamp)}</body></html>"
+    render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>${result}<br><hr><br>App: ${app.name} - Main<br>Last timestamp: ${new Date(atomicState.timestamp)}</body></html>"
 }
 
 
