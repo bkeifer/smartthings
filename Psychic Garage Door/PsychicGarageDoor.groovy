@@ -40,6 +40,12 @@ preferences {
     section("Grace period:") {
 		input "grace", "number", title: "Minutes", required: true
 	}
+
+    section ("Time Interval") {
+        input "startTime", "time", title: "Starting at:", required: false
+        input "endTime", "time", title: "Ending at:", required: false
+    }
+
     section("Send Notifications?") {
         input("recipients", "contact", title: "Send notifications to", required: false) {
             input "phone", "phone", title: "Warn with text message (optional)",
@@ -78,7 +84,7 @@ def initialize() {
 }
 
 def presenceHandler(evt) {
-    if (controlSwitchesAllOn) {
+    if (controlSwitchesAllOn && timeInRange()) {
         stash ("Presence detected! ${evt.value}")
         if(evt.value == "present" && state.currentPresence == "not present") {
         	log.debug ("evt.value is present")
@@ -109,7 +115,7 @@ def presenceHandler(evt) {
 }
 
 def interiorDoorHandler(evt) {
-    if (controlSwitchesAllOn) {
+    if (controlSwitchesAllOn && timeInRange()) {
         def timeDifference = now() - state.lastOpen
         if (garageDoorSensor.latestValue("contact") == "open") {
             stash ("Garage door is open.  Checking time differentials.")
@@ -143,6 +149,16 @@ def controlSwitchesAllOn() {
         }
     }
     return allOn
+}
+
+private timeInRange() {
+    def rightNow  = now()
+    def startTime = timeToday(settings."startTime").time
+    def endTime   = timeToday(settings."endTime").time
+
+    return (startTime > endTime ?
+                    ( rightNow >= startTime || rightNow <= endTime) :
+                    ( rightNow >= startTime && rightNow <= endTime))
 }
 
 def stash(msg) {
