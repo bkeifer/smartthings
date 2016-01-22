@@ -65,7 +65,11 @@ def updateState() {
 
 
 def createSchedule() {
-    unschedule()
+    try {
+        unschedule()
+    } catch (e) {
+        log.warn("Hamster fell off the wheel.")
+    }
     updateState()
     runEvery5Minutes(updateAmbientHumidity)
 }
@@ -142,8 +146,8 @@ def logURLs() {
 
 def checkStamp() {
     def result
-    # 300000 = 5 minutes in milliseconds.  Replace with a value of at least
-    # 2x the frequency at which your scheduled function should run.
+    // 300000 = 5 minutes in milliseconds.  Replace with a value of at least
+    // 2x the frequency at which your scheduled function should run.
     if (now() - state.timestamp < 300000) {
         result = "FIRING"
     } else {
