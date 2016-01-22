@@ -89,7 +89,11 @@ def initialize() {
 
 
 def createSchedule() {
-    unschedule()
+    try {
+        unschedule()
+    } catch (e) {
+        log.warn("Hamster fell off the wheel.")
+    }
     schedule("0 * * * * ?", "checkSensors")
 }
 
