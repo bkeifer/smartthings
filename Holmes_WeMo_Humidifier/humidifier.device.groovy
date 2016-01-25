@@ -211,73 +211,48 @@ def on() {
     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
-// Throwing 400, before replacing entities
-// def fanMin() {
-//     log.debug("inside fanMin")
+
+
+// THIS WORKS.  DO NOT FUCK THIS UP.
+// def fanHigh() {
+//     log.debug("inside fanHigh")
 //     def body = """
 //     <?xml version="1.0" encoding="utf-8"?>
 //     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
 //     <s:Body>
 //     <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-//     <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;1&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+//     <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;4&lt;/value&gt;&lt;/attribute&gt;</attributeList>
 //     </u:SetAttributes>
 //     </s:Body>
-//     </s:Envelope>"""
+//     </s:Envelope>
+//     """
 //     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 // }
 
 def fanMin() {
-    log.debug("inside fanMin")
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:GetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    </u:GetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+    sendFanCommand("1")
 }
-
 def fanLow() {
-    log.debug("inside fanLow")
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;2&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-    </u:SetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    //postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+    sendFanCommand("2")
 }
-
 def fanMed() {
-    log.debug("inside fanMed")
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;3&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-    </u:SetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+    sendFanCommand("3")
 }
-
 def fanHigh() {
-    log.debug("inside fanHigh")
+    sendFanCommand("4")
+}
+def fanMax() {
+    sendFanCommand("5")
+}
+
+
+def sendFanCommand(String level) {
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <s:Body>
     <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;4&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;${level}&lt;/value&gt;&lt;/attribute&gt;</attributeList>
     </u:SetAttributes>
     </s:Body>
     </s:Envelope>
@@ -285,11 +260,11 @@ def fanHigh() {
     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
-def fanMax() {
-    log.debug("FanMax pressed")
-    def bodyMap = [attributeList:'&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;5&lt;/value&gt;&lt;/attribute&gt;']
-    sendCommand('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1', 'SetAttributes', bodyMap)
-}
+// def fanMax() {
+//     log.debug("FanMax pressed")
+//     def bodyMap = [attributeList:'&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;5&lt;/value&gt;&lt;/attribute&gt;']
+//     sendCommand('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1', 'SetAttributes', bodyMap)
+// }
 
 def getAttributes() {
 
