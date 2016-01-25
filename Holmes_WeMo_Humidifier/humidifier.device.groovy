@@ -1,60 +1,49 @@
 /**
-*  Wemo Crockpot Switch (Connect)
-*
-*  Copyright 2014 Nicolas Cerveaux
-*
-*  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License. You may obtain a copy of the License at:
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
-*  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
-*  for the specific language governing permissions and limitations under the License.
-*
-*/
-
-preferences {
-
-    //input "setpoint", "number", title: "Desired Humidity", description: "(percent)", required: false, displayDuringSetup: true
-    //input "cookingTime", "number", title: "Cooking Cycle Time (min)", description: "Default 0", defaultValue: '0', required: false, displayDuringSetup: true
-    //input "cookingMode", "number", title: "Cooking Mode - 50=Warm,51=Low,52=High", description: "Default 50", defaultValue: '50', required: false, displayDuringSetup: true
-
-}
-
-
+ *  Holmes Smart Humidifier With WeMo
+ *
+ *  Copyright 2016 Brian Keifer
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
 metadata {
-    // Automatically generated. Make future change here.
-    definition (name: "Holmes WeMo Humidifier", namespace: "bkeifer", author: "Brian Keifer") {
-        //capability "Energy Meter"
-        capability "Actuator"
-        capability "Switch"
-        capability "Polling"
-        capability "Refresh"
+	definition (name: "Holmes Smart Humidifier With WeMo", namespace: "bkeifer", author: "Brian Keifer") {
+		capability "Actuator"
+		capability "Polling"
+		capability "Refresh"
+		capability "Relative Humidity Measurement"
+		capability "Switch"
 
-        command "subscribe"
-        command "resubscribe"
-        command "unsubscribe"
-        //command "levelUp"
-        //command "levelDown"
+        attribute "fanMode", "string"
 
-        //attribute "time" ,string
-        //attribute "mode", string
-        attribute "filterLife", integer
-        attribute "desiredHumidity", string
-        attribute "humidity", string
-        attribute "fanMode", string
-    }
+        command "fanMax"
+        command "fanHigh"
+        command "fanMed"
+        command "fanLow"
+        command "fanMin"
 
-    // simulator metadata
-    simulator {}
+        command "hum45"
+        command "hum50"
+        command "hum55"
+        command "hum60"
+        command "humMax"
+	}
 
-    // UI tile definitions
-    tiles {
-        standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+	simulator {
+		// TODO: define status and reply messages here
+	}
+
+	tiles {
+            standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
             state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
             state "off", label:'${name}', action:"switch.off", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
-
         }
 
         /*
@@ -67,21 +56,46 @@ metadata {
         }
         */
 
+        standardTile("min", "device.fanMode",label:"Min") {
+          state "default", label: 'MIN', action: "fanMin", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
+          state "min", label: 'MIN', action: "fanMin", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+        }
+
+        standardTile("low", "device.fanMode",label:"Low") {
+          state "default", label: 'LOW', action: "fanLow", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
+          state "low", label: 'LOW', action: "fanLow", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+        }
+
+        standardTile("med", "device.fanMode") {
+          state "default", label: 'MED', action: "fanMed", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
+          state "med", label: 'MED', action: "fanMed", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+        }
+
+        standardTile("high", "device.fanMode") {
+          state "default", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
+          state "high", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+        }
+
+        standardTile("max", "device.fanMode",label:"Max") {
+          state "default", label: 'MAX', action: "fanMax", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
+          state "max", label: 'MAX', action: "fanMax", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+        }
+
         valueTile("fanMode", "device.fanMode",decoration:"flat") {
             state "default", label:'Fan Speed: ${currentValue}'
         }
 
-        valueTile("filterLife", "device.filterLife",decoration:"flat") {
-            state "default", label:'Filter Life:${currentValue}%'
-        }
+//        valueTile("filterLife", "device.filterLife",decoration:"flat") {
+//            state "default", label:'Filter Life:${currentValue}%'
+//        }
 
-        valueTile("humidity", "device.humidity",decoration:"flat") {
-            state "default", label:'Humidity: ${currentValue}', unit:"%"
-        }
+//        valueTile("humidity", "device.humidity",decoration:"flat") {
+//            state "default", label:'Humidity: ${currentValue}', unit:"%"
+//        }
 
-        valueTile("desiredHumidity", "device.desiredHumidity",decoration:"flat") {
-            state "default", label:'Desired Humidity: ${currentValue}', unit:"%"
-        }
+//        valueTile("desiredHumidity", "device.desiredHumidity",decoration:"flat") {
+//            state "default", label:'Desired Humidity: ${currentValue}', unit:"%"
+//        }
 
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -90,164 +104,35 @@ metadata {
 
         main "switch"
         //details (["switch","cookedTime","time","mode", "refresh"])
-        details (["switch", "refresh", "fanMode", "humidity", "desiredHumidity", "filterLife"])
-    }
+        details (["switch", "refresh", "min", "low", "med", "high", "max", "fanMode"])
+		// TODO: define your main and details tiles here
+	}
 }
 
-
-
 // parse events into attributes
-def parse(String description){
+def parse(String description) {
+	log.debug "Parsing '${description}'"
+    def evtMessage = parseLanMessage(description)
+    def evtHeader = evtMessage.header
+    def evtBody = evtMessage.body
+    log.debug("Header: ${evtHeader}")
+    log.debug("Body: ${evtBody}")
 
-    def msg = parseLanMessage(description)
-    def headersAsString = msg.header
-    log.debug("HAS: ${headersAsString}")
-    //log.debug("desc: ${description}")
-
-    def map = stringToMap(description)
-    def decodedHeaders = map.headers.decodeBase64()
-    def headerString = decodedHeaders.toString()
-
-    def result = []
-
-    // update subscriptionId
-    if (headersAsString.contains("SID: uuid:")) {
-        def sid = (headersAsString =~ /SID: uuid:.*/) ? ( headersAsString =~ /SID: uuid:.*/)[0] : "0"
-        sid -= "SID: uuid:".trim()
-        log.debug('Update subscriptionID: '+ sid)
-        updateDataValue("subscriptionId", sid)
+    if (evtHeader?.contains("SID: uuid:")) {
+        log.debug("found new SID")
+		def sid = (evtHeader =~ /SID: uuid:.*/) ? ( evtHeader =~ /SID: uuid:.*/)[0] : "0"
+		sid -= "SID: uuid:".trim()
+        log.debug "updating subscription sid: ${sid}"
+    	updateDataValue("subscriptionId", sid)
     }
-    //log.debug("body: ${new String(map.body.decodeBase64())}")
-    // parse the rest of the message
-    if (map.body) {
-        def bodyString = new String(map.body.decodeBase64())
-        def body = new XmlSlurper().parseText(bodyString)
 
-        if (body.text() =~ /UPnPError/) {
-            log.trace("Error recieved!")
-        } else {
-            log.debug("bodyString: ${bodyString}")
-            log.debug("body.text(): ${body.text()}")
-            log.debug("body.size(): ${body.size()}")
+    if (evtBody) {
+        def body = new XmlSlurper().parseText(evtBody)
+        log.debug ("xmlbody: ${body}")
+//        result << createEvent(name: value:)
+    }
 
-            def attrName = ( body.text() =~ /<attribute><name>(\w+)<\/name><value>([\w\.]+)<\/value>/ )
-            log.debug("attrName[0]: ${attrName[0]}")
-            log.debug("attrName[0][2]: ${attrName[0][2]}")
-
-            if ( attrName[0][1] == "FilterLife" ) {
-                int maxFilterLife = 60480
-                def percent = (attrName[0][2].toInteger() / maxFilterLife) * 100
-                log.trace("Filter Life: ${percent}")
-                result << createEvent(name: "filterLife", value: percent.toInteger())
-            }
-
-            if ( attrName[0][1] == "CurrentHumidity" ) {
-                log.trace("Humidity: ${attrName[0][2]}")
-                result << createEvent(name: "humidity", value: attrName[0][2])
-            }
-
-            if ( attrName[0][1] == "FanMode" ) {
-                def fanModes = ["Off", "Min", "Low", "Med", "High", "Max"]
-                log.trace("Fan Mode: ${fanModes[attrName[0][2].toInteger()]}")
-                result << createEvent(name: "fanMode", value: fanModes[attrName[0][2].toInteger()] )
-            }
-
-            if ( attrName[0][1] == "DesiredHumidity" ) {
-                def setPoints = ["45%", "50%", "55%", "60%", "MAX"]
-                log.trace("Desired Humidity: ${setPoints[attrName[0][2].toInteger()]}")
-                result << createEvent(name: "desiredHumidity", value: setPoints[attrName[0][2].toInteger()] )
-            }
-
-        }
-        //if(body?.Body?.GetJardenStatus?.filterLife?.text()) {
-        //    def filterLife = body.attribute.value.text()
-        //    log.trace "FILTER LIFE: ${filterLife}"
-        //}
-        /*
-        //Set Crockpot State Response
-        if(body?.Body?.SetHumidifierStateResponse?.time?.text()){
-            def crockpotTime = body?.Body?.SetHumidifierStateResponse?.time?.text()
-            log.trace "Got SetHumidifierStateResponse = $crockpotTime"
-            result << createEvent(name: "time", value: crockpotTime)
-        }
-
-        else if (body?.Body?.SetHumidifierStateResponse?.text()){
-            def response = body?.Body?.SetHumidifierStateResponse?.text()
-            log.trace "Set Response - $response"
-        }
-
-        //TimeSync Response
-        else if (body?.property?.TimeSyncRequest?.text()) {
-
-            log.trace "Got TimeSyncRequest - ignoring"
-            //result << timeSyncResponse()
-        }
-
-        //Get Crockpot State Response
-        else if (body?.Body?.GetHumidifierStateResponse?.text)	{
-
-            if(body?.Body?.GetHumidifierStateResponse?.time?.text()){
-                def crockpotTime = body?.Body?.GetHumidifierStateResponse?.time?.text()
-                log.trace "Got GetHumidifierStateResponse Time = $crockpotTime"
-                result << createEvent(name: "time", value: crockpotTime)
-            }
-
-
-            if(body?.Body?.GetHumidifierStateResponse?.mode?.text()){
-                def modeNum = body?.Body?.GetHumidifierStateResponse?.mode?.text()
-                def crockpotMode =''
-
-                if (modeNum == '0') {
-                    crockpotMode = 'Off'
-                    sendEvent(name:"switch",value:"off")
-                }
-                else if (modeNum == '50') {
-                    crockpotMode = 'Warm'
-                    sendEvent(name:"switch",value:"on")
-                }
-                else if (modeNum == '51') {
-                    crockpotMode = 'Low'
-                    //sendEvent(name:"switch",value:"low")
-                }
-                else if (modeNum == '52') {
-                    crockpotMode = 'High'
-                    //sendEvent(name:"switch",value:"high")
-                }
-                else { crockpotMode = 'Unk - ${modeNum}'
-
-            }
-
-            log.trace "Got GetHumidifierStateResponse Mode = ${crockpotMode}"
-            result << createEvent(name: "mode", value: crockpotMode)
-
-        }
-
-        if(body?.Body?.GetHumidifierStateResponse?.cookedTime?.text()){
-            def crockpotCookedTime = body?.Body?.GetHumidifierStateResponse?.cookedTime?.text()
-            log.trace "Got GetHumidifierStateResponse cookedTime = ${crockpotCookedTime}"
-            result << createEvent(name: "cookedTime", value: crockpotCookedTime)
-
-        }
-
-        if (body?.property?.GetHumidifierStateResponse?.text())
-        {
-            def value = body?.property?.GetHumidifierStateResponse?.text()
-            log.trace "Notify: crockpotState = ${value}"
-
-        }
-
-        } //end getCrockpotState
-
-        //Other Responses
-        else {
-            log.trace "Unknown Response - ${body?.text()}"
-        }
-        */
-    } // end if map.body
-
-    result
-} // end parse
-
+}
 
 private getCallBackAddress() {
     device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
@@ -267,7 +152,7 @@ private String convertHexToIP(hex) {
 private getHostAddress() {
     def ip = getDataValue("ip")
     def port = getDataValue("port")
-
+    log.debug("HOST: ${ip}:${port}")
     if (!ip || !port) {
         def parts = device.deviceNetworkId.split(":")
         if (parts.length == 2) {
@@ -298,51 +183,117 @@ private postRequest(path, SOAPaction, body) {
         'SOAPAction': "\"${SOAPaction}\""
         ]
         ], device.deviceNetworkId)
-
-    return result
+    log.debug("DNI: ${device.deviceNetworkId}")
     log.debug "RESULT: ${result}"
+    return result
 }
 
-
+// handle commands
 def poll() {
-    // TODO: Get this ip/port dynamically
-    subscribe("10.13.13.45:49153")
+	log.debug "Executing 'poll'"
+    // TODO: Get this IP/Port dynamically
+    //subscribe("10.13.13.45:49155")
 }
 
 
 def on() {
-    // def body = """
-    // <?xml version="1.0" encoding="utf-8"?>
-    // <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    // <SOAP-ENV:Body>
-    // <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
-    // <BinaryState>1</BinaryState>
-    // </m:SetBinaryState>
-    // </SOAP-ENV:Body>
-    // </SOAP-ENV:Envelope>
-    // """
-    // postRequest('/upnp/control/basicevent1', 'urn:Belkin:service:basicevent:1#SetBinaryState', body)
-    off()
+    log.debug("inside on")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;3&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    </u:SetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
+// Throwing 400, before replacing entities
+// def fanMin() {
+//     log.debug("inside fanMin")
+//     def body = """
+//     <?xml version="1.0" encoding="utf-8"?>
+//     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+//     <s:Body>
+//     <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+//     <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;1&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+//     </u:SetAttributes>
+//     </s:Body>
+//     </s:Envelope>"""
+//     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+// }
 
-// THIS SECTION SENDS NETWORK TRAFFIC
-    // def off() {
-    //     log.debug("inside off")
-    //     def body = """
-    //     <?xml version="1.0" encoding="utf-8"?>
-    //     <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    //     <SOAP-ENV:Body>
-    //     <m:SetBinaryState xmlns:m="urn:Belkin:service:basicevent:1">
-    //     <BinaryState>0</BinaryState>
-    //     </m:SetBinaryState>
-    //     </SOAP-ENV:Body>
-    //     </SOAP-ENV:Envelope>
-    //     """
-    //     log.debug("doaction")
-    //     doAction("SetBinaryState", "basicevent", "/upnp/control/basicevent1", [BinaryState:0])
-    // }
+def fanMin() {
+    log.debug("inside fanMin")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:GetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    </u:GetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+}
 
+def fanLow() {
+    log.debug("inside fanLow")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;2&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    </u:SetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    //postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+}
+
+def fanMed() {
+    log.debug("inside fanMed")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;3&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    </u:SetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+}
+
+def fanHigh() {
+    log.debug("inside fanHigh")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;4&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    </u:SetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+}
+
+def fanMax() {
+    log.debug("FanMax pressed")
+    def bodyMap = [attributeList:'&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;5&lt;/value&gt;&lt;/attribute&gt;']
+    sendCommand('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1', 'SetAttributes', bodyMap)
+}
+
+def getAttributes() {
+
+}
 
 def off() {
     log.debug("inside off")
@@ -350,18 +301,14 @@ def off() {
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <s:Body>
-    <u:GetCrockpotState xmlns:u="urn:Belkin:service:crockpotevent:1">
-    </u:GetCrockpotState>
+    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;0&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    </u:SetAttributes>
     </s:Body>
     </s:Envelope>
     """
-    postRequest('/upnp/control/crockpot1', 'urn:Belkin:service:crockpotevent:1#GetCrockpotState', body)
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
-
-// def off() {
-//     log.debug("inside off")
-//     doAction("GetBinaryState", "basicevent", "/upnp/control/basicevent", [:])
-// }
 
 def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
     def result = new physicalgraph.device.HubSoapAction(
@@ -374,7 +321,6 @@ def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
     return result
 
 }
-
 
 def refresh() {
     //log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
@@ -409,62 +355,6 @@ private subscribeAction(path, callbackPath="") {
 def subscribe(hostAddress) {
     log.debug "Subscribing to ${hostAddress}"
     subscribeAction("/upnp/event/basicevent1")
-    /*
-    String x
-    def hubAddress = getCallBackAddress()
-
-    def notifyURL = "&lt;" + "http://" + hubAddress + "/notify&gt;"
-
-    x = """SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
-    HOST: ${hostAddress}
-    CALLBACK: &lt;http://${hubAddress}/&gt;
-    NT: upnp:event
-    TIMEOUT: Second-5400
-    User-Agent: CyberGarage-HTTP/1.0
-
-
-    """
-
-    log.debug("x: ${x}")
-
-    def result = new physicalgraph.device.HubAction(
-        method: "SUBSCRIBE",
-        path: "/upnp/event/basicevent1",
-        headers: [
-            HOST: getHostAddress(),
-            CALLBACK: "<http://${getCallBackAddress()}/notify>",
-            NT: "upnp:event",
-            TIMEOUT: "Second-3600"
-        ]
-    )
-    log.debug(result)
-*/
-    /////////////////////////////////////////////////////
-    /*
-    def action = """SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
-    HOST: ${hostAddress}
-    CALLBACK: &lt;http://${hubAddress}/&gt;
-    NT: upnp:event
-    TIMEOUT: Second-5400
-    User-Agent: CyberGarage-HTTP/1.0
-
-
-    """
-    log.debug("ACTION: ${action}")
-    new physicalgraph.device.HubAction(action, physicalgraph.device.Protocol.LAN)
-    */
-
-    /*
-    new physicalgraph.device.HubAction("""SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
-    HOST: ${hostAddress}
-    CALLBACK: <http://${address}/>
-    NT: upnp:event
-    TIMEOUT: Second-5400
-    User-Agent: CyberGarage-HTTP/1.0
-
-
-    """, physicalgraph.device.Protocol.LAN)
-    */
 }
 
 
@@ -512,4 +402,27 @@ def unsubscribe() {
 
 
     """, physicalgraph.device.Protocol.LAN)
+}
+
+def sendCommand(path,urn,action,body){
+	log.debug "Send command called with path: ${path} , urn: ${urn}, action: ${action} , body: ${body}"
+    def address = getCallBackAddress()
+    def ip = getHostAddress()
+    log.debug("cBA: ${address}")
+    log.debug("gHA: ${ip}")
+	def result = new physicalgraph.device.HubSoapAction(
+		path:    path,
+		urn:     urn,
+		action:  action,
+		body:    body,
+        headers: [
+            HOST: "10.13.13.45:49155",
+            CALLBACK: "<http://${address}/>",
+            NT: "upnp:event",
+            TIMEOUT: "Second-28800"
+        ]
+//		headers: [Host:getHostAddress(), CONNECTION: "close"]
+    )
+    log.debug(result)
+	return result
 }

@@ -207,13 +207,14 @@ def locationHandler(evt) {
     def hub = evt?.hubId
     def parsedEvent = parseDiscoveryMessage(description)
     parsedEvent << ["hub":hub]
-
-if (parsedEvent?.ssdpTerm?.contains("Belkin:device:Humidifier")) {
-
+log.debug("PARSED: ${parsedEvent}")
+    if (parsedEvent?.ssdpTerm?.contains("Belkin:device:Humidifier")) {
+        log.debug("FOUND HUMIDIFIER")
         def humidifiers = getWemoHumidifiers()
 
         if (!(humidifiers."${parsedEvent.ssdpUSN.toString()}"))
         { //if it doesn't already exist
+            log.debug ("Creating humidifiers")
             humidifiers << ["${parsedEvent.ssdpUSN.toString()}":parsedEvent]
         }
         else
@@ -224,6 +225,10 @@ if (parsedEvent?.ssdpTerm?.contains("Belkin:device:Humidifier")) {
             def d = humidifiers."${parsedEvent.ssdpUSN.toString()}"
             boolean deviceChangedValues = false
 
+            log.debug("old ip: ${d.ip}")
+            log.debug("new ip: ${parsedEvent.ip}")
+            log.debug("old port: ${d.port}")
+            log.debug("new port: ${parsedEvent.port}")
             if(d.ip != parsedEvent.ip || d.port != parsedEvent.port) {
                 d.ip = parsedEvent.ip
                 d.port = parsedEvent.port
