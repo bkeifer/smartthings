@@ -22,6 +22,7 @@ metadata {
 		capability "Switch"
 
         attribute "fanMode", "string"
+        attribute "setpoint", "string"
 
         command "fanMax"
         command "fanHigh"
@@ -115,6 +116,10 @@ def parse(String description) {
     def evtMessage = parseLanMessage(description)
     def evtHeader = evtMessage.header
     def evtBody = evtMessage.body
+    evtBody = evtBody.replaceAll(~/&amp;/, "&")
+    evtBody = evtBody.replaceAll(~/&lt;/, "<")
+    evtBody = evtBody.replaceAll(~/&gt;/, ">")
+
     log.debug("Header: ${evtHeader}")
     log.debug("Body: ${evtBody}")
 
@@ -127,8 +132,15 @@ def parse(String description) {
     }
 
     if (evtBody) {
+        log.debug("evtBody: ${evtBody}")
         def body = new XmlSlurper().parseText(evtBody)
-        log.debug ("xmlbody: ${body}")
+        if (body == 0) {
+            log.debug ("SOMETHING WORKED!")
+        } else {
+            log.debug(body.Body.GetAttributesResponse.attributeList)
+            // def list = new XmlSlurper().parseText(body.Body.GetAttributesResponse.attributeList)
+            log.debug(list)
+        }
 //        result << createEvent(name: value:)
     }
 
@@ -183,14 +195,13 @@ private postRequest(path, SOAPaction, body) {
         'SOAPAction': "\"${SOAPaction}\""
         ]
         ], device.deviceNetworkId)
-    log.debug("DNI: ${device.deviceNetworkId}")
-    log.debug "RESULT: ${result}"
+    log.debug(result)
     return result
 }
 
 // handle commands
 def poll() {
-	log.debug "Executing 'poll'"
+	log.debug "POLL() DOES NOTHING."
     // TODO: Get this IP/Port dynamically
     //subscribe("10.13.13.45:49155")
 }
@@ -212,23 +223,9 @@ def on() {
 }
 
 
-
-// THIS WORKS.  DO NOT FUCK THIS UP.
-// def fanHigh() {
-//     log.debug("inside fanHigh")
-//     def body = """
-//     <?xml version="1.0" encoding="utf-8"?>
-//     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-//     <s:Body>
-//     <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-//     <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;4&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-//     </u:SetAttributes>
-//     </s:Body>
-//     </s:Envelope>
-//     """
-//     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
-// }
-
+def off() {
+    sendFanCommand("0")
+}
 def fanMin() {
     sendFanCommand("1")
 }
@@ -243,6 +240,22 @@ def fanHigh() {
 }
 def fanMax() {
     sendFanCommand("5")
+}
+
+def hum45() {
+    sendHumidityCommand("0")
+}
+def hum50(){
+    sendHumidityCommand("1")
+}
+def hum55(){
+    sendHumidityCommand("2")
+}
+def hum60(){
+    sendHumidityCommand("3")
+}
+def humMax(){
+    sendHumidityCommand("4")
 }
 
 
@@ -260,24 +273,13 @@ def sendFanCommand(String level) {
     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
-// def fanMax() {
-//     log.debug("FanMax pressed")
-//     def bodyMap = [attributeList:'&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;5&lt;/value&gt;&lt;/attribute&gt;']
-//     sendCommand('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1', 'SetAttributes', bodyMap)
-// }
-
-def getAttributes() {
-
-}
-
-def off() {
-    log.debug("inside off")
+def sendHumidityCommand(String level) {
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
     <s:Body>
     <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;0&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+    <attributeList>&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;${level}&lt;/value&gt;&lt;/attribute&gt;</attributeList>
     </u:SetAttributes>
     </s:Body>
     </s:Envelope>
@@ -285,24 +287,39 @@ def off() {
     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
-def doAction(action, service, path, Map body = [InstanceID:0, BinaryState:0]) {
-    def result = new physicalgraph.device.HubSoapAction(
-        path:    path,
-        urn:     "urn:Belkin:service:$service:1",
-        action:  action,
-        body:    body,
-        headers: [Host:getHostAddress()]
-    )
-    return result
-
+def sendGetAttributesCommand() {
+    log.debug("Sending GetAttributes")
+    def body = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+    <u:GetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+    </u:GetAttributes>
+    </s:Body>
+    </s:Envelope>
+    """
+    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#GetAttributes', body)
 }
+
 
 def refresh() {
     //log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
     log.debug("Refresh requested!")
-    poll()
-    //subscribeAction("/upnp/event/basicevent1")
-    //off()
+    sendGetAttributesCommand()
+    //poll()
+}
+
+def sendCommand(path,urn,action,body){
+	log.debug "Send command called with path: ${path} , urn: ${urn}, action: ${action} , body: ${body}"
+	def result = new physicalgraph.device.HubSoapAction(
+        path:    path,
+        urn:     urn,
+        action:  action,
+        body:    body,
+        headers: [Host:getHostAddress(), CONNECTION: "close"]
+    )
+    log.debug("SCR: ${result}")
+    return result
 }
 
 private subscribeAction(path, callbackPath="") {
@@ -377,27 +394,4 @@ def unsubscribe() {
 
 
     """, physicalgraph.device.Protocol.LAN)
-}
-
-def sendCommand(path,urn,action,body){
-	log.debug "Send command called with path: ${path} , urn: ${urn}, action: ${action} , body: ${body}"
-    def address = getCallBackAddress()
-    def ip = getHostAddress()
-    log.debug("cBA: ${address}")
-    log.debug("gHA: ${ip}")
-	def result = new physicalgraph.device.HubSoapAction(
-		path:    path,
-		urn:     urn,
-		action:  action,
-		body:    body,
-        headers: [
-            HOST: "10.13.13.45:49155",
-            CALLBACK: "<http://${address}/>",
-            NT: "upnp:event",
-            TIMEOUT: "Second-28800"
-        ]
-//		headers: [Host:getHostAddress(), CONNECTION: "close"]
-    )
-    log.debug(result)
-	return result
 }
