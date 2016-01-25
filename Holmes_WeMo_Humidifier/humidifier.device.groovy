@@ -24,11 +24,13 @@ metadata {
         attribute "fanMode", "string"
         attribute "setpoint", "string"
 
+        command "sendFanCommand"
         command "fanMax"
         command "fanHigh"
         command "fanMed"
         command "fanLow"
         command "fanMin"
+        command "fanOff"
 
         command "hum45"
         command "hum50"
@@ -42,7 +44,7 @@ metadata {
 	}
 
 	tiles {
-            standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+        standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
             state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
             state "off", label:'${name}', action:"switch.off", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
         }
@@ -57,30 +59,37 @@ metadata {
         }
         */
 
+        standardTile("off", "device.fanMode",label:"Off") {
+          state "default", label: 'OFF', action: "fanOff", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "off", label: 'OFF', action: "fanOff", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
+        }
+
         standardTile("min", "device.fanMode",label:"Min") {
-          state "default", label: 'MIN', action: "fanMin", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
-          state "min", label: 'MIN', action: "fanMin", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+          state "default", label: 'MIN', action: "fanMin", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "min", label: 'MIN', action: "fanMin", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
         }
 
         standardTile("low", "device.fanMode",label:"Low") {
-          state "default", label: 'LOW', action: "fanLow", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
-          state "low", label: 'LOW', action: "fanLow", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+          state "default", label: 'LOW', action: "fanLow", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "low", label: 'LOW', action: "fanLow", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
         }
 
         standardTile("med", "device.fanMode") {
-          state "default", label: 'MED', action: "fanMed", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
-          state "med", label: 'MED', action: "fanMed", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+          state "default", label: 'MED', action: "fanMed", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "med", label: 'MED', action: "fanMed", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
         }
 
         standardTile("high", "device.fanMode") {
-          state "default", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
-          state "high", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+          state "default", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "high", label: 'HIGH', action: "fanHigh", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
         }
 
         standardTile("max", "device.fanMode",label:"Max") {
-          state "default", label: 'MAX', action: "fanMax", icon:"st.Appliances.applicances16",backgroundColor:"#ffffff"
-          state "max", label: 'MAX', action: "fanMax", icon:"st.Appliances.applicances16",backgroundColor:"#66ff33"
+          state "default", label: 'MAX', action: "fanMax", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
+          state "max", label: 'MAX', action: "fanMax", icon:"st.Appliances.appliances11",backgroundColor:"#66ff33"
         }
+
+//st.Weather.weather12
 
         valueTile("fanMode", "device.fanMode",decoration:"flat") {
             state "default", label:'Fan Speed: ${currentValue}'
@@ -102,10 +111,15 @@ metadata {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
+        controlTile("fanSliderControl", "device.fanMode", "slider", height: 1, width: 3, inactiveLabel: false, range:"(0..5)") {
+                 state "level", action:"sendFanCommand"
+        }
+
+
 
         main "switch"
         //details (["switch","cookedTime","time","mode", "refresh"])
-        details (["switch", "refresh", "min", "low", "med", "high", "max", "fanMode"])
+        details (["switch", "refresh", "fanSliderControl"])//"fanMode", "off", "min", "low", "med", "high", "max"])
 		// TODO: define your main and details tiles here
 	}
 }
@@ -223,43 +237,43 @@ def on() {
 }
 
 
-def off() {
-    sendFanCommand("0")
+def fanOff() {
+    sendFanCommand(0)
 }
 def fanMin() {
-    sendFanCommand("1")
+    sendFanCommand(1)
 }
 def fanLow() {
-    sendFanCommand("2")
+    sendFanCommand(2)
 }
 def fanMed() {
-    sendFanCommand("3")
+    sendFanCommand(3)
 }
 def fanHigh() {
-    sendFanCommand("4")
+    sendFanCommand(4)
 }
 def fanMax() {
-    sendFanCommand("5")
+    sendFanCommand(5)
 }
 
 def hum45() {
-    sendHumidityCommand("0")
+    sendHumidityCommand(0)
 }
 def hum50(){
-    sendHumidityCommand("1")
+    sendHumidityCommand(1)
 }
 def hum55(){
-    sendHumidityCommand("2")
+    sendHumidityCommand(2)
 }
 def hum60(){
-    sendHumidityCommand("3")
+    sendHumidityCommand(3)
 }
 def humMax(){
-    sendHumidityCommand("4")
+    sendHumidityCommand(4)
 }
 
 
-def sendFanCommand(String level) {
+def sendFanCommand(level) {
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -273,7 +287,7 @@ def sendFanCommand(String level) {
     postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
 }
 
-def sendHumidityCommand(String level) {
+def sendHumidityCommand(level) {
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
