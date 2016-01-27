@@ -220,7 +220,7 @@ def parse(String description) {
         def body = new XmlSlurper().parseText(evtBody)
         if (body == 0) {
             log.debug ("Command succeeded!")
-            sendGetAttributesCommand()
+            return [sendGetAttributesCommand()]
         } else {
             log.debug("ELSE!: ${body.Body}")
             // FanMode
