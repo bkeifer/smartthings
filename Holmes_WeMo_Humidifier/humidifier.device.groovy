@@ -22,6 +22,7 @@ metadata {
 		capability "Switch"
 
         attribute "fanMode", "number"
+		attribute "previousFanMode", "number"
         attribute "desiredHumidity", "string"
         attribute "waterAdvise", "number"
         attribute "noWater", "number"
@@ -29,7 +30,6 @@ metadata {
         attribute "expiredFilterTime", "number"
         attribute "randomAttribute", "string"
 
-        command "sendFanCommand"
         command "fanMax"
         command "fanHigh"
         command "fanMed"
@@ -354,11 +354,9 @@ private postRequest(path, SOAPaction, body) {
     return result
 }
 
-// handle commands
+
 def poll() {
-	log.debug "POLL() DOES NOTHING."
-    // TODO: Get this IP/Port dynamically
-    //subscribe("10.13.13.45:49155")
+	refresh()
 }
 
 
