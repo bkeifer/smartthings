@@ -24,6 +24,7 @@ metadata {
         attribute "fanMode", "number"
 		attribute "previousFanMode", "number"
         attribute "desiredHumidity", "string"
+		attribute "waterLevel", "string"
         attribute "filterLife", "string"
         attribute "expiredFilterTime", "number"
 
@@ -184,6 +185,10 @@ metadata {
 			state "filterLife", label:'Filter: ${currentValue}%'
 		}
 
+		valueTile("waterLevel", "device.waterLevel", width: 2, height: 2, decoration: "flat") {
+			state "waterLevel", label:'Water: ${currentValue}'
+		}
+
         controlTile("humiditySliderControl", "device.desiredHumidity", "slider", height: 1, width: 2) {
                  state "desiredHumidity", action:"sendHumidityCommand"
         }
@@ -193,7 +198,7 @@ metadata {
         main "mainTile"
         //details (["switch","cookedTime","time","mode", "refresh"])
         //details (["fanLevel", "fanSliderControl", "desiredHumidity", "humiditySliderControl", "refresh"])//"fanMode", "off", "min", "low", "med", "high", "max"])
-        details (["off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "refresh", "humidity", "desiredHumidity", "filterLife"])
+        details (["off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "refresh", "humidity", "desiredHumidity", "filterLife", "waterLevel"])
 		// TODO: define your main and details tiles here
 	}
 }
@@ -243,6 +248,7 @@ def parse(String description) {
                 def fanMode
                 def desiredHumidity
 				def filterLife
+				def waterLevel
 
                 switch(matchResponse[0][1].toInteger()) {
                     case 0:
@@ -286,6 +292,16 @@ def parse(String description) {
                 result += createEvent(name: "fanMode", value:fanMode)
                 result += createEvent(name: "desiredHumidity", value:desiredHumidity)
                 result += createEvent(name: "humidity", value:matchResponse[0][3])
+
+				if (matchResponse[0][5] == "1") {
+					waterLevel = "Empty"
+				} else if (matchResponse[0][4] == "1") {
+					waterLevel = "Low"
+				} else {
+					waterLevel = "OK"
+				}
+				result += createEvent(name: "waterLevel", value: waterLevel)
+
                 result += createEvent(name: "waterAdvise", value:matchResponse[0][4])
                 result += createEvent(name: "noWater", value:matchResponse[0][5])
 
