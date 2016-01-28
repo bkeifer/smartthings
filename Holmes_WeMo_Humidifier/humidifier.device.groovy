@@ -70,20 +70,10 @@ metadata {
         //     }
         // }
 
-        // standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-        //     state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
-        //     state "off", label:'${name}', action:"switch.off", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
-        // }
-
-        /*
-        valueTile("mode", "device.mode",decoration:"flat", inactiveLabel: false) {
-            state "default", label:'Mode: ${currentValue}'
+        standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+            state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
+            state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
         }
-
-        valueTile("time", "device.time",decoration:"flat") {
-            state "default", label:'Time Left: ${currentValue}'
-        }
-        */
 
         standardTile("off", "device.fanMode",label:"Off") {
           state "default", label: 'OFF', action: "fanOff", icon:"st.Appliances.appliances11",backgroundColor:"#ffffff"
@@ -158,7 +148,7 @@ metadata {
 //        }
 
 
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
+        standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
@@ -190,22 +180,17 @@ metadata {
 		}
 
         controlTile("humiditySliderControl", "device.desiredHumidity", "slider", height: 1, width: 2) {
-                 state "desiredHumidity", action:"sendHumidityCommand"
+            state "desiredHumidity", action:"sendHumidityCommand"
         }
 
-
-
         main "mainTile"
-        //details (["switch","cookedTime","time","mode", "refresh"])
-        //details (["fanLevel", "fanSliderControl", "desiredHumidity", "humiditySliderControl", "refresh"])//"fanMode", "off", "min", "low", "med", "high", "max"])
-        details (["off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "refresh", "humidity", "desiredHumidity", "filterLife", "waterLevel"])
-		// TODO: define your main and details tiles here
+        details (["switch", "waterLevel", "refresh", "off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "humidity", "desiredHumidity", "filterLife"])
 	}
 }
 
-// parse events into attributes
+
 def parse(String description) {
-	// log.debug "Parsing '${description}'"
+
     def evtMessage = parseLanMessage(description)
     def evtHeader = evtMessage.header
     def evtBody = evtMessage.body
