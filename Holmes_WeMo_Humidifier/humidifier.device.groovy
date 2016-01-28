@@ -24,11 +24,8 @@ metadata {
         attribute "fanMode", "number"
 		attribute "previousFanMode", "number"
         attribute "desiredHumidity", "string"
-        attribute "waterAdvise", "number"
-        attribute "noWater", "number"
-        attribute "filterLife", "number"
+        attribute "filterLife", "string"
         attribute "expiredFilterTime", "number"
-        attribute "randomAttribute", "string"
 
         command "fanMax"
         command "fanHigh"
@@ -42,6 +39,8 @@ metadata {
         command "hum55"
         command "hum60"
         command "humMax"
+
+		command "resetFilterLife"
 	}
 
 	simulator {
@@ -158,7 +157,7 @@ metadata {
 //        }
 
 
-        standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
@@ -181,6 +180,10 @@ metadata {
             state "humidity", label:'Current: ${currentValue}%'
         }
 
+		valueTile("filterLife", "device.filterLife", width: 2, height: 2, decoration: "flat") {
+			state "filterLife", label:'Filter: ${currentValue}%'
+		}
+
         controlTile("humiditySliderControl", "device.desiredHumidity", "slider", height: 1, width: 2) {
                  state "desiredHumidity", action:"sendHumidityCommand"
         }
@@ -190,7 +193,7 @@ metadata {
         main "mainTile"
         //details (["switch","cookedTime","time","mode", "refresh"])
         //details (["fanLevel", "fanSliderControl", "desiredHumidity", "humiditySliderControl", "refresh"])//"fanMode", "off", "min", "low", "med", "high", "max"])
-        details (["off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "humidity", "refresh", "desiredHumidity"])
+        details (["off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "refresh", "humidity", "desiredHumidity", "filterLife"])
 		// TODO: define your main and details tiles here
 	}
 }
@@ -239,6 +242,7 @@ def parse(String description) {
                 def result = []
                 def fanMode
                 def desiredHumidity
+				def filterLife
 
                 switch(matchResponse[0][1].toInteger()) {
                     case 0:
@@ -284,13 +288,17 @@ def parse(String description) {
                 result += createEvent(name: "humidity", value:matchResponse[0][3])
                 result += createEvent(name: "waterAdvise", value:matchResponse[0][4])
                 result += createEvent(name: "noWater", value:matchResponse[0][5])
-                result += createEvent(name: "filterLife", value:matchResponse[0][6])
+
+				filterLife = ((matchResponse[0][6].toInteger() / 60480) * 100)
+				log.debug("filterLife: ${filterLife}")
+                result += createEvent(name: "filterLife", value: filterLife)
+
                 result += createEvent(name: "expiredFilterTime", value:matchResponse[0][7])
 
                 log.debug("Result: ${result}")
                 return result
             } catch (e) {
-                log.debug("Exception")
+                log.debug("Exception ${e}")
             }
             // if (curFanMode.getCount()) {
             //     log.debug("Current Fan Mode: ${curFanMode[0]}")
@@ -361,26 +369,42 @@ def poll() {
 
 
 def on() {
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;3&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;CurrentHumidity&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;WaterAdvise&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;NoWater&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;FilterLife&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;&lt;attribute&gt;&lt;name&gt;ExpiredFilterTime&lt;/name&gt;&lt;value&gt;NULL&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-    </u:SetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+	switch (device.latestState('previousFanMode').stringValue) {
+		case "20":
+			fanMin()
+			break
+		case "40":
+			fanLow()
+			break
+		case "60":
+			fanMed()
+			break
+		case "80":
+			fanHigh()
+			break
+		case "100":
+			fanMax()
+			break
+	}
+}
+
+def off() {
+	fanOff()
 }
 
 
-def fanOff()  { sendFanCommand("Off")      }
-def fanMin()  { sendFanCommand("Min")      }
-def fanLow()  { sendFanCommand("Low")      }
-def fanMed()  { sendFanCommand("Med")      }
-def fanHigh() { sendFanCommand("High")     }
 def fanMax()  { sendFanCommand("Max")      }
+def fanHigh() { sendFanCommand("High")     }
+def fanMed()  { sendFanCommand("Med")      }
+def fanLow()  { sendFanCommand("Low")      }
+def fanMin()  { sendFanCommand("Min")      }
+
+def fanOff()  {
+	def currentFanMode = device.latestState('fanMode').stringValue
+	log.debug("sending event: ${currentFanMode}")
+	sendEvent(name: "previousFanMode", value: currentFanMode, displayed: false)
+	sendFanCommand("Off")
+}
 
 def hum45()   { sendHumidityCommand("45%") }
 def hum50()   { sendHumidityCommand("50%") }
