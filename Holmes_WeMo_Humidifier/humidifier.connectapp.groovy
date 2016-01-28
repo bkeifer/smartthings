@@ -5,7 +5,7 @@
  *  Date: 2013-09-06
  */
 definition(
-    name: "Holmes WeMo Humidifier (Connect)",
+    name: "Holmes Smart Humidifier With WeMo (Connect)",
     namespace: "bkeifer",
     author: "Brian Keifer",
     description: "Allows you to integrate your Holmes WeMo Humidifier with SmartThings.",
@@ -175,7 +175,7 @@ def addHumidifiers() {
         if (!d) {
             log.debug "Creating WeMo Humidifier with dni: ${selectedHumidifier.value.mac}"
             log.debug "IP: ${selectedHumidifier.value.ip} - PORT: ${selectedHumidifier.value.port}"
-            d = addChildDevice("bkeifer", "Holmes WeMo Humidifier", selectedHumidifier.value.mac, selectedHumidifier?.value.hub, [
+            d = addChildDevice("bkeifer", "Holmes Smart Humidifier With WeMo", selectedHumidifier.value.mac, selectedHumidifier?.value.hub, [
                 "label": selectedHumidifier?.value?.name ?: "WeMo Humidifier",
                 "data": [
                     "mac": selectedHumidifier.value.mac,

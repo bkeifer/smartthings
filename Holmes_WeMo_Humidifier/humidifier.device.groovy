@@ -194,9 +194,12 @@ def parse(String description) {
     def evtMessage = parseLanMessage(description)
     def evtHeader = evtMessage.header
     def evtBody = evtMessage.body
-    evtBody = evtBody.replaceAll(~/&amp;/, "&")
-    evtBody = evtBody.replaceAll(~/&lt;/, "<")
-    evtBody = evtBody.replaceAll(~/&gt;/, ">")
+
+	if (evtBody) {
+		evtBody = evtBody.replaceAll(~/&amp;/, "&")
+    	evtBody = evtBody.replaceAll(~/&lt;/, "<")
+    	evtBody = evtBody.replaceAll(~/&gt;/, ">")
+	}
 
     // log.debug("Header: ${evtHeader}")
     // log.debug("Body: ${evtBody}")
@@ -216,19 +219,9 @@ def parse(String description) {
             return [sendGetAttributesCommand()]
         } else {
             log.debug("ELSE!: ${body.Body}")
-            // FanMode
-            // DesiredHumidity
-            // CurrentHumidity
-            // WaterAdvise
-            // NoWater
-            // FilterLife
-            // ExpiredFilterTime
             try {
-                def regex = /FanMode(\d)DesiredHumidity(\d)CurrentHumidity([\d\.]+)WaterAdvise(\d)NoWater(\d)FilterLife(\d+)ExpiredFilterTime(\d)/
-                // def matcher = body.Body =~
-
                 def matchResponse = body.Body =~ /FanMode(\d)DesiredHumidity(\d)CurrentHumidity([\d\.]+)WaterAdvise(\d)NoWater(\d)FilterLife(\d+)ExpiredFilterTime(\d)/
-                // log.debug("mFM: ${matchResponse[0]}")
+                log.debug("mFM: ${matchResponse[0]}")
                 def result = []
                 def fanMode
                 def desiredHumidity
@@ -291,24 +284,18 @@ def parse(String description) {
                 result += createEvent(name: "noWater", value:matchResponse[0][5])
 
 				filterLife = ((matchResponse[0][6].toInteger() / 60480) * 100)
-				log.debug("filterLife: ${filterLife}")
                 result += createEvent(name: "filterLife", value: filterLife)
 
                 result += createEvent(name: "expiredFilterTime", value:matchResponse[0][7])
 
-                log.debug("Result: ${result}")
                 return result
             } catch (e) {
                 log.debug("Exception ${e}")
             }
-            // if (curFanMode.getCount()) {
-            //     log.debug("Current Fan Mode: ${curFanMode[0]}")
-            // }
         }
-//        result << createEvent(name: value:)
     }
-
 }
+
 
 private getCallBackAddress() {
     device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
@@ -328,7 +315,7 @@ private String convertHexToIP(hex) {
 private getHostAddress() {
     def ip = getDataValue("ip")
     def port = getDataValue("port")
-    log.debug("HOST: ${ip}:${port}")
+
     if (!ip || !port) {
         def parts = device.deviceNetworkId.split(":")
         if (parts.length == 2) {
@@ -339,10 +326,8 @@ private getHostAddress() {
         }
     }
 
-    //convert IP/port
     ip = convertHexToIP(ip)
     port = convertHexToInt(port)
-    //log.debug "Using ip: ${ip} and port: ${port} for device: ${device.id}"
     return ip + ":" + port
 }
 
@@ -359,7 +344,6 @@ private postRequest(path, SOAPaction, body) {
         'SOAPAction': "\"${SOAPaction}\""
         ]
         ], device.deviceNetworkId)
-    log.debug(result)
     return result
 }
 
@@ -514,6 +498,7 @@ def sendGetAttributesCommand() {
 def refresh() {
     //log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
     log.debug("Refresh requested!")
+	subscribe()
     sendGetAttributesCommand()
     //poll()
 }
@@ -527,14 +512,16 @@ def sendCommand(path,urn,action,body){
         body:    body,
         headers: [Host:getHostAddress(), CONNECTION: "close"]
     )
-    log.debug("SCR: ${result}")
+    // log.debug("SCR: ${result}")
     return result
 }
 
 private subscribeAction(path, callbackPath="") {
     log.trace "subscribe($path, $callbackPath)"
     def address = getCallBackAddress()
-    address = "10.13.13.5"
+	// log.debug("address1: ${address}")
+    // address = "10.13.13.5"
+	log.debug("address2: ${address}")
     def ip = getHostAddress()
 
     def result = new physicalgraph.device.HubAction(
