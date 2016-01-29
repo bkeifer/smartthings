@@ -78,7 +78,11 @@ def updated() {
 }
 
 def initialize() {
-	atomicState.clear()
+	try {
+        atomicState.clear()
+    } catch (e) {
+        log.debug "Caught exception trying to clear state."
+    }
     unschedule(checkSensors)
     createSchedule()
     subscribe(app, appTouch)
