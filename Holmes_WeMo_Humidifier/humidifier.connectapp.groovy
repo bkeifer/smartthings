@@ -1,9 +1,11 @@
 /**
  *  WeMo Humidifier Service Manager
  *
- *  Author: Brian Keifer, based on code by Kevin Tierney
- *  Date: 2013-09-06
+ *  Author:  Brian Keifer, heavily based on code by Kevin Tierney
+ *  Version: 0.9.0
+ *  Date:    2016-01-28
  */
+
 definition(
     name: "Holmes Smart Humidifier With WeMo (Connect)",
     namespace: "bkeifer",

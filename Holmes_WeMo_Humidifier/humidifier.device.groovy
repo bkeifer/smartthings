@@ -1,17 +1,9 @@
 /**
  *  Holmes Smart Humidifier With WeMo
  *
- *  Copyright 2016 Brian Keifer
- *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
- *
+ *  Author:  Brian Keifer with special thanks to and code from Kevin Tierney
+ *  Version: 0.9.0
+ *  Date:    2016-01-28
  */
 metadata {
 	definition (name: "Holmes Smart Humidifier With WeMo", namespace: "bkeifer", author: "Brian Keifer") {
@@ -66,13 +58,13 @@ metadata {
         //         attributeState("default", label:'Current Humidity: ${currentValue}%', unit:"%")
         //     }
         //     tileAttribute("device.fanMode", key: "SLIDER_CONTROL") {
-        //         attributeState("level", action: "sendFanCommand")
+        //         attributeState("level", action: "setFan")
         //     }
         // }
 
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-            state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
-            state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+            state "on", label:'${name}', action:"switch.fanOff", icon:"st.switches.switch.on", backgroundColor:"#79b821"
+            state "off", label:'${name}', action:"switch.fanOn", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
         }
 
         standardTile("off", "device.fanMode",label:"Off") {
@@ -130,23 +122,9 @@ metadata {
             state "Max", label: "Max", action: "humMax", icon:"st.Weather.weather12", backgroundColor:"#3333ff"
         }
 
-
-        // valueTile("fanMode", "device.fanMode",decoration:"flat") {
-        //     state "default", label:'Fan Speed: ${currentValue}'
-        // }
-
-//        valueTile("filterLife", "device.filterLife",decoration:"flat") {
-//            state "default", label:'Filter Life:${currentValue}%'
-//        }
-
-//        valueTile("humidity", "device.humidity",decoration:"flat") {
-//            state "default", label:'Humidity: ${currentValue}', unit:"%"
-//        }
-
-//        valueTile("desiredHumidity", "device.desiredHumidity",decoration:"flat") {
-//            state "default", label:'Desired Humidity: ${currentValue}', unit:"%"
-//        }
-
+		standardTile("resetFilterLife", "device.resetFilterLife", width: 2, height: 2, decoration: "flat") {
+			state "defaut", label:'Reset Filter Life', action:"resetFilterLife", icon:"st.Health & Wellness.health7"
+		}
 
         standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
             state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -156,7 +134,7 @@ metadata {
             state "level", label:'Fan Level: ${currentValue}'
         }
         controlTile("fanSliderControl", "device.fanMode", "slider", height: 1, width: 2) {
-                 state "level", action:"sendFanCommand"
+                 state "level", action:"setFan"
         }
 
         valueTile("desiredHumidity", "device.desiredHumidity", width: 2, height: 2, decoration: "flat") {
@@ -180,11 +158,11 @@ metadata {
 		}
 
         controlTile("humiditySliderControl", "device.desiredHumidity", "slider", height: 1, width: 2) {
-            state "desiredHumidity", action:"sendHumidityCommand"
+            state "desiredHumidity", action:"setHumidity"
         }
 
         main "mainTile"
-        details (["switch", "waterLevel", "refresh", "off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "humidity", "desiredHumidity", "filterLife"])
+        details (["switch", "waterLevel", "refresh", "off", "min", "low", "med", "high", "max", "hum45", "hum50", "hum55", "hum60", "humMax", "humidity", "filterLife", "resetFilterLife"])
 	}
 }
 
@@ -216,7 +194,7 @@ def parse(String description) {
         def body = new XmlSlurper().parseText(evtBody)
         if (body == 0) {
             log.debug ("Command succeeded!")
-            return [sendGetAttributesCommand()]
+            return [getAttributes()]
         } else {
             log.debug("ELSE!: ${body.Body}")
             try {
@@ -353,7 +331,7 @@ def poll() {
 }
 
 
-def on() {
+def fanOn() {
 	switch (device.latestState('previousFanMode').stringValue) {
 		case "20":
 			fanMin()
@@ -373,32 +351,28 @@ def on() {
 	}
 }
 
-def off() {
-	fanOff()
-}
 
-
-def fanMax()  { sendFanCommand("Max")      }
-def fanHigh() { sendFanCommand("High")     }
-def fanMed()  { sendFanCommand("Med")      }
-def fanLow()  { sendFanCommand("Low")      }
-def fanMin()  { sendFanCommand("Min")      }
+def fanMax()  { setFan("Max")  }
+def fanHigh() { setFan("High") }
+def fanMed()  { setFan("Med")  }
+def fanLow()  { setFan("Low")  }
+def fanMin()  { setFan("Min")  }
 
 def fanOff()  {
 	def currentFanMode = device.latestState('fanMode').stringValue
 	log.debug("sending event: ${currentFanMode}")
 	sendEvent(name: "previousFanMode", value: currentFanMode, displayed: false)
-	sendFanCommand("Off")
+	setFan("Off")
 }
 
-def hum45()   { sendHumidityCommand("45%") }
-def hum50()   { sendHumidityCommand("50%") }
-def hum55()   { sendHumidityCommand("55%") }
-def hum60()   { sendHumidityCommand("60%") }
-def humMax()  { sendHumidityCommand("Max") }
+def hum45()   { setHumidity("45%") }
+def hum50()   { setHumidity("50%") }
+def hum55()   { setHumidity("55%") }
+def hum60()   { setHumidity("60%") }
+def humMax()  { setHumidity("Max") }
 
 
-def sendFanCommand(level) {
+def setFan(level) {
     def newLevel
 
     switch(level) {
@@ -427,21 +401,10 @@ def sendFanCommand(level) {
             newLevel = 5
             break
     }
-
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;FanMode&lt;/name&gt;&lt;value&gt;${newLevel}&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-    </u:SetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+	setAttribute("FanMode", newLevel)
 }
 
-def sendHumidityCommand(level) {
+def setHumidity(level) {
     def newLevel
 
     switch(level) {
@@ -466,22 +429,31 @@ def sendHumidityCommand(level) {
             newLevel = 4
             break
     }
-
-    def body = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-    <u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
-    <attributeList>&lt;attribute&gt;&lt;name&gt;DesiredHumidity&lt;/name&gt;&lt;value&gt;${newLevel}&lt;/value&gt;&lt;/attribute&gt;</attributeList>
-    </u:SetAttributes>
-    </s:Body>
-    </s:Envelope>
-    """
-    postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+	setAttribute("DesiredHumidity", newLevel)
 }
 
-def sendGetAttributesCommand() {
-    log.debug("sendGetAttributesCommand()")
+def resetFilterLife() {
+	setAttribute("FilterLife", 60480)
+}
+
+
+def setAttribute(name, value) {
+	def body = """
+	<?xml version="1.0" encoding="utf-8"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	<s:Body>
+	<u:SetAttributes xmlns:u="urn:Belkin:service:deviceevent:1">
+	<attributeList>&lt;attribute&gt;&lt;name&gt;${name}&lt;/name&gt;&lt;value&gt;${value}&lt;/value&gt;&lt;/attribute&gt;</attributeList>
+	</u:SetAttributes>
+	</s:Body>
+	</s:Envelope>
+	"""
+	postRequest('/upnp/control/deviceevent1', 'urn:Belkin:service:deviceevent:1#SetAttributes', body)
+}
+
+
+def getAttributes() {
+    log.debug("getAttributes()")
     def body = """
     <?xml version="1.0" encoding="utf-8"?>
     <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -495,26 +467,16 @@ def sendGetAttributesCommand() {
 }
 
 
+
+
 def refresh() {
     //log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
     log.debug("Refresh requested!")
 	subscribe()
-    sendGetAttributesCommand()
+    getAttributes()
     //poll()
 }
 
-def sendCommand(path,urn,action,body){
-	log.debug "Send command called with path: ${path} , urn: ${urn}, action: ${action} , body: ${body}"
-	def result = new physicalgraph.device.HubSoapAction(
-        path:    path,
-        urn:     urn,
-        action:  action,
-        body:    body,
-        headers: [Host:getHostAddress(), CONNECTION: "close"]
-    )
-    // log.debug("SCR: ${result}")
-    return result
-}
 
 private subscribeAction(path, callbackPath="") {
     log.trace "subscribe($path, $callbackPath)"
