@@ -17,18 +17,21 @@
 import groovy.time.*
 
 definition(
-    name: "Laundry Monitor",
-    namespace: "bmmiller",
-    author: "Brandon Miller",
-    description: "This application is a modification of the SmartThings Laundry Monitor SmartApp.  Instead of using a vibration sensor, this utilizes Power (Wattage) draw from an Aeon Smart Energy Meter.",
+    name: "My Laundry Monitor",
+    namespace: "bkeifer",
+    author: "Brian Keifer",
+    description: "This application is a modification of a modification of the SmartThings Laundry Monitor SmartApp.",
     category: "Convenience",
     iconUrl: "http://www.vivevita.com/wp-content/uploads/2009/10/recreation_sign_laundry.png",
     iconX2Url: "http://www.vivevita.com/wp-content/uploads/2009/10/recreation_sign_laundry.png")
 
 
 preferences {
-	section("Tell me when this washer/dryer has stopped..."){
-		input "sensor1", "capability.powerMeter"
+    section("Tell me when this washer has stopped..."){
+		input "washerSensor", "capability.powerMeter"
+	}
+    section("Tell me when this dryer has stopped..."){
+		input "dryerSensor", "capability.accelerationSensor"
 	}
 
     section("Notifications") {
@@ -44,7 +47,7 @@ preferences {
 
 	section ("Additionally", hidden: hideOptionsSection(), hideable: true) {
         input "switches", "capability.switch", title: "Turn on these switches?", required:false, multiple:true
-	    input "speech", "capability.musicPlayer", title:"Speak message via: ", multiple: true, required: false
+	    input "speaker", "capability.musicPlayer", title:"Speak message via: ", multiple: true, required: false
 	}
 
     section ("Logstash Server") {
@@ -55,7 +58,7 @@ preferences {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-    atomicState.running = false
+    atomicState.washerRunning = false
 
 	initialize()
 }
@@ -68,38 +71,38 @@ def updated() {
 }
 
 def initialize() {
-	subscribe(sensor1, "power", powerInputHandler)
+	subscribe(washerSensor, "power", powerInputHandler)
 }
 
 def powerInputHandler(evt) {
-	def latestPower = sensor1.currentValue("power")
+	def latestPower = washerSensor.currentValue("power")
     log.debug "Power updated: ${latestPower}W"
-    if (!atomicState.isRunning && latestPower > minimumWattage) {
-        atomicState.isRunning = true
-        atomicState.startedAt = now()
-        atomicState.stoppedAt = null
+    if (!atomicState.washerRunning && latestPower > minimumWattage) {
+        atomicState.washerRunning = true
+        atomicState.washerStartedAt = now()
+        atomicState.washerStoppedAt = null
         stash "Cycle started.  Latest Power: ${latestPower}"
         dumpState()
-    } else if (atomicState.isRunning && latestPower < minimumWattage) {
+    } else if (atomicState.washerRunning && latestPower < minimumWattage) {
         stash "Power low."
-        if (!atomicState.waiting) {
+        if (!atomicState.washerWaiting) {
             stash "Entering wait mode."
             runIn(minimumOffTime, cycleDone)
-            atomicState.waiting = true
+            atomicState.washerWaiting = true
         }
-    } else if (atomicState.waiting && latestPower > minimumWattage) {
+    } else if (atomicState.washerWaiting && latestPower > minimumWattage) {
         stash "Cycle continuing!"
-        atomicState.waiting = false
+        atomicState.washerWaiting = false
         unschedule()
     }
 }
 
 def cycleDone() {
-    atomicState.isRunning = false
-    atomicState.waiting = false
-    atomicState.stoppedAt = now()
+    atomicState.washerRunning = false
+    atomicState.washerWaiting = false
+    atomicState.washerStoppedAt = now()
     dumpState()
-    stash "startedAt: ${atomicState.startedAt}, stoppedAt: ${atomicState.stoppedAt}"
+    stash "startedAt: ${atomicState.washerStartedAt}, stoppedAt: ${atomicState.washerStoppedAt}"
     stash message
 
     if (phone) {
@@ -111,12 +114,12 @@ def cycleDone() {
     if (switches) {
         switches*.on()
     }
-    if (speech) {
-        speech.playTrack(state.sound.uri)
+    if (speaker) {
+        speaker.playTrack(state.sound.uri)
     }
 
-    atomicState.startedAt = null
-    atomicState.stoppedAt = null
+    atomicState.washerStartedAt = null
+    atomicState.washerStoppedAt = null
 }
 
 private textToSpeechT(message){
