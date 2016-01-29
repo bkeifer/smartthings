@@ -481,9 +481,7 @@ def refresh() {
 private subscribeAction(path, callbackPath="") {
     log.trace "subscribe($path, $callbackPath)"
     def address = getCallBackAddress()
-	// log.debug("address1: ${address}")
-    // address = "10.13.13.5"
-	log.debug("address2: ${address}")
+	log.debug("address: ${address}")
     def ip = getHostAddress()
 
     def result = new physicalgraph.device.HubAction(
