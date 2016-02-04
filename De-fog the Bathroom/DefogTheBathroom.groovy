@@ -31,11 +31,14 @@ preferences {
     section("Which switch controls the fan?") {
         input "fanSwitch", "capability.switch", required: true
     }
-    section("Turn the fan on if humidity is above:") {
+    section("Turn the fan on if humidity is more than this percentage above the rolling average:") {
         input "humidityHigh", "number", title: "%", required: true
     }
-    section("Turn off when humidity goes below:") {
+    section("Turn turn the fan off when humidity is within this percentage above the rolling average:") {
         input "humidityLow", "number", title: "%", required: true
+    }
+    section("Turn fan off after this many minutes:") {
+        input "fanDelay", "number", title:"Minutes", required: true
     }
 
     section ("Logstash Server") {
@@ -65,11 +68,8 @@ def updateState() {
 
 
 def createSchedule() {
-    try {
-        unschedule()
-    } catch (e) {
-        log.warn("Hamster fell off the wheel.")
-    }
+    try { unschedule() }
+    catch (e) { log.warn("Hamster fell off the wheel.") }
     updateState()
     runEvery5Minutes(updateAmbientHumidity)
 }
@@ -104,12 +104,14 @@ def appTouch(evt) {
 
 def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
+    def rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
 
-    if (eventValue >= humidityHigh && fanSwitch.currentSwitch == "off") {
-        stash("Humidity (${eventValue}) is above threshold of ${humidityHigh}.  Turning the fan ON.")
+    if (eventValue >= (rollingAverage + humidityHigh) && fanSwitch.currentSwitch == "off") {
+        stash("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage}%).  Turning the fan ON.")
         fanSwitch.on()
-    } else if (eventValue <= humidityLow && fanSwitch.currentSwitch == "on") {
-        stash("Humidity (${eventValue}) is below lower threshold of ${humidityHigh}.  Turning the fan OFF.")
+        runIn(fanDelay * 60, fanOff)
+    } else if (eventValue <= (rollingAverage + humidityLow) && fanSwitch.currentSwitch == "on") {
+        stash("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
         fanSwitch.off()
     }
 }
@@ -124,10 +126,16 @@ def updateAmbientHumidity() {
 
     state.ambientHumidity = q
 
-    stash("Rolling ambient humidity average: ${state.ambientHumidity.sum() / state.ambientHumidity.size()}")
+    def rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
+
+    stash("Rolling ambient humidity average: ${rollingAverage} - ${rollingAverage + humidityHigh} needed to trigger.")
 
 }
 
+def fanOff() {
+    stash("Turning fan OFF by timer.  Current humidity is ${ambientHumidity}%.")
+    fanSwitch.off()
+}
 
 def logURLs() {
 	if (!state.accessToken) {
