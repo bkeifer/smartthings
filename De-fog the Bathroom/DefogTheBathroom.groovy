@@ -113,6 +113,8 @@ def eventHandler(evt) {
     } else if (eventValue <= (rollingAverage + humidityLow) && fanSwitch.currentSwitch == "on") {
         stash("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
         fanSwitch.off()
+    } else {
+        stash("eventValue: ${eventValue}, rollingAverage: ${rollingAverage}, humHigh: ${humidityHigh}, humLow: ${humLow}")
     }
 }
 
