@@ -27,8 +27,8 @@ definition(
 
 preferences {
     section("Location") {
-        input "latitude", "number", description: "Latitude", required: true
-        input "longitude", "number", description: "Longitude", requred: true
+        input "latitude", "text", description: "Latitude", required: true
+        input "longitude", "text", description: "Longitude", requred: true
     }
     section("Forecast API Key") {
         input "apikey", "text", required: false
@@ -37,6 +37,7 @@ preferences {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
+    state.forecast = []
 
 	initialize()
 }
@@ -49,15 +50,17 @@ def updated() {
 }
 
 def initialize() {
+    state.forecast = []
+
     subscribe(app, getForecast)
 }
 
-def getForecast() {
+def getForecast(evt) {
     def params = [
         uri: "https://api.forecast.io",
         path: "/forecast/${apikey}/40.496754,-75.438682"
     ]
-
+    log.debug("params: ${params}")
 	try {
         httpGet(params) { resp ->
             if (resp.data) {
@@ -67,9 +70,12 @@ def getForecast() {
                     log.debug "header: ${it.name}: ${it.value}"
                 }
                 resp.getData().each {
+                    log.debug("it: ${it}")
                     if (it.key == "hourly") {
+                        log.debug("hourly")
                         def x = it.value
                         x.each { xkey ->
+                            log.debug("xkey: ${xkey}")
                             if (xkey.key == "data") {
                                 def y = xkey.value
                                 def templist = y["temperature"]
