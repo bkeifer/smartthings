@@ -14,14 +14,15 @@
  *
  */
 definition(
-    name: "Smart Bathroom Fan",
+    name: "De-fog the Bathroom",
     namespace: "bkeifer",
     author: "Brian Keifer",
     description: "Turns on/off a switch (for an exhaust fan) based on humidity.",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png"
+)
 
 
 preferences {
@@ -79,6 +80,7 @@ def createSchedule() {
     runEvery5Minutes(updateAmbientHumidity)
 }
 
+
 def installed() {
 	stash "Installed with settings: ${settings}"
     state.ambientHumidity = []
@@ -86,27 +88,24 @@ def installed() {
 	initialize()
 }
 
+
 def updated() {
 	stash "Updated with settings: ${settings}"
     if (!state.ambientHumidity) {
         log("Initializing array.")
         state.ambientHumidity = []
     }
-
 	unsubscribe()
 	initialize()
 }
 
+
 def initialize() {
     subscribe(sensor, "humidity", eventHandler)
-    subscribe(app, appTouch)
     createSchedule()
     logURLs()
 }
 
-def appTouch(evt) {
-    updateAmbientHumidity()
-}
 
 def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
@@ -148,11 +147,13 @@ def updateAmbientHumidity() {
     log("Rolling average: ${rollingAverage.round(1)}% - Currently ${sensor.currentHumidity}% - Trigger at ${triggerPoint.round(1)}%.")
 }
 
+
 def fanOff() {
     log("Turning fan OFF due to timer.")
     state.fanOn = null
     fanSwitch.off()
 }
+
 
 def logURLs() {
 	if (!state.accessToken) {
