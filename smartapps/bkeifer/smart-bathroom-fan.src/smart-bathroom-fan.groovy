@@ -103,6 +103,7 @@ def updated() {
 
 def initialize() {
     subscribe(sensor, "humidity", eventHandler)
+    updateAmbientHumidity()
     createSchedule()
     logURLs()
 }
