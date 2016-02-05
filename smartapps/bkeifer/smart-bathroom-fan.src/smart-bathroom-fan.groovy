@@ -83,7 +83,7 @@ def createSchedule() {
 
 
 def installed() {
-	stash "Installed with settings: ${settings}"
+	log "Installed with settings: ${settings}"
     state.ambientHumidity = []
     state.fanOn = null
 	initialize()
@@ -91,7 +91,7 @@ def installed() {
 
 
 def updated() {
-	stash "Updated with settings: ${settings}"
+	log "Updated with settings: ${settings}"
     if (!state.ambientHumidity) {
         log("Initializing array.")
         state.ambientHumidity = []
@@ -160,7 +160,7 @@ def logURLs() {
 	if (!state.accessToken) {
 		try {
 			createAccessToken()
-			stash "Token: $state.accessToken"
+			log "Token: $state.accessToken"
 		} catch (e) {
 			log("Error.  Is OAuth enabled?")
 		}
