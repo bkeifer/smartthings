@@ -14,10 +14,10 @@
  *
  */
 definition(
-    name: "De-fog the Bathroom",
+    name: "Smart Bathroom Fan",
     namespace: "bkeifer",
     author: "Brian Keifer",
-    description: "Turns on/off a switch (for an exhaust fan) based on humidity",
+    description: "Turns on/off a switch (for an exhaust fan) based on humidity.",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
@@ -25,44 +25,49 @@ definition(
 
 
 preferences {
-    section("Which humidity sensor should we use?") {
-        input "sensor", "capability.relativeHumidityMeasurement", required: true
-    }
-    section("Which switch controls the fan?") {
-        input "fanSwitch", "capability.switch", required: true
-    }
-    section("Turn the fan on if humidity is more than this percentage above the rolling average:") {
-        input "humidityHigh", "number", title: "%", required: true
-    }
-    section("Turn turn the fan off when humidity is within this percentage above the rolling average:") {
-        input "humidityLow", "number", title: "%", required: true
-    }
-    section("Turn fan off after this many minutes:") {
-        input "fanDelay", "number", title:"Minutes", required: true
-    }
-
-    section ("Logstash Server") {
-        input "logstash_host", "text", title: "Logstash Hostname/IP"
-        input "logstash_port", "number", title: "Logstash Port"
-    }
+    page(name: "prefPage")
 }
 
 mappings {
-  path("/stamp") {
-    action: [
-      GET: "checkStamp",
-    ]
-  }
-  path("/reschedule") {
-    action: [
-      GET: "reschedule",
-    ]
-  }
+  path("/stamp")      { action: [ GET: "checkStamp", ] }
+  path("/reschedule") { action: [ GET: "reschedule", ] }
+}
+
+
+def prefPage() {
+    def explanationText = "The threshold settings below are in percent above the 24-hour rolling average humidity detected by the sensor specified above."
+
+    // This gets messy, abandoning for now.  If sensor is changed, state needs to be cleared.
+    // if (state.ambientHumidity) {
+    //     def rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
+    //     explanationText = "${explanationText}\nOver the past ${state.ambientHumidity.size() * 5} minutes the average humidity at this sensor is ${rollingAverage}%."
+    // }
+
+    dynamicPage(name: "prefPage", title: "Preferences", uninstall: true, install: true) {
+        section("What devices are we using?") {
+            input "sensor", "capability.relativeHumidityMeasurement", title: "Humidity sensor:", required: true
+            input "fanSwitch", "capability.switch", title: "Fan switch", required: true
+        }
+        section("Thresholds") {
+            paragraph(explanationText)
+            input "humidityHigh", "number", title: "Turn fan on when room is this percent above average humidity:", required: true
+            input "humidityLow", "number", title: "Turn fan off when room is this percent above average humidity:", required: true
+            input "fanDelay", "number", title: "Turn fan off after this many minutes regardless of humidity:", required: false
+        }
+
+        section("Logstash") {
+            input "useLogstash", "bool", title: "Enable Logstash logging?", submitOnChange: true
+            if (useLogstash) {
+                input "logstash_host", "text", title: "Logstash Hostname/IP"
+                input "logstash_port", "number", title: "Logstash Port"
+            }
+        }
+    }
 }
 
 
 def updateState() {
-	log.debug("State updated!")
+	log("State updated!")
     state.timestamp = now()
 }
 
@@ -77,13 +82,14 @@ def createSchedule() {
 def installed() {
 	stash "Installed with settings: ${settings}"
     state.ambientHumidity = []
+    state.fanOn = null
 	initialize()
 }
 
 def updated() {
 	stash "Updated with settings: ${settings}"
     if (!state.ambientHumidity) {
-        log.debug("Initializing array.")
+        log("Initializing array.")
         state.ambientHumidity = []
     }
 
@@ -104,38 +110,47 @@ def appTouch(evt) {
 
 def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
-    def rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
+    Float rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
 
     if (eventValue >= (rollingAverage + humidityHigh) && fanSwitch.currentSwitch == "off") {
-        stash("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage}%).  Turning the fan ON.")
+        log("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage.round(1)}%).  Turning the fan ON.")
+        state.fanOn = now()
         fanSwitch.on()
-        runIn(fanDelay * 60, fanOff)
+        //LOLscheduler
+        if(fanDelay) {
+            runIn(fanDelay * 60, fanOff)
+        }
     } else if (eventValue <= (rollingAverage + humidityLow) && fanSwitch.currentSwitch == "on") {
-        stash("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
-        fanSwitch.off()
-    } else {
-        stash("eventValue: ${eventValue}, rollingAverage: ${rollingAverage}, humHigh: ${humidityHigh}, humLow: ${humLow}")
+        log("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
+        fanOff()
+    } else if (state.fanOn != null && fanDelay && state.fanOn + fanDelay * 60000 <= now()){
+        log("Fan timer elapsed and the hamster in the wheel powering the scheduler died.  Turning the fan OFF.  Current humidity is ${eventValue}%.")
+        fanOff()
+    } else if (state.fanOn != null && fanSwitch.currentSwitch == "off") {
+        log("Fan turned OFF by someone/something else.  Resetting.")
+        state.fanOn = null
     }
 }
 
+
 def updateAmbientHumidity() {
+    updateState()
+
     def q = state.ambientHumidity as Queue
     q.add(sensor.currentHumidity)
 
-    while (q.size () > 288) {
-        q.poll()
-    }
+    while (q.size () > 288) { q.poll() }
 
     state.ambientHumidity = q
 
-    def rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
-
-    stash("Rolling ambient humidity average: ${rollingAverage} - ${rollingAverage + humidityHigh} needed to trigger.")
-
+    Float rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
+    Float triggerPoint = rollingAverage + humidityHigh
+    log("Rolling average: ${rollingAverage.round(1)}% - Currently ${sensor.currentHumidity}% - Trigger at ${triggerPoint.round(1)}%.")
 }
 
 def fanOff() {
-    stash("Turning fan OFF by timer.  Current humidity is ${ambientHumidity}%.")
+    log("Turning fan OFF due to timer.")
+    state.fanOn = null
     fanSwitch.off()
 }
 
@@ -143,14 +158,14 @@ def logURLs() {
 	if (!state.accessToken) {
 		try {
 			createAccessToken()
-			log.debug "Token: $state.accessToken"
+			stash "Token: $state.accessToken"
 		} catch (e) {
-			log.debug("Error.  Is OAuth enabled?")
+			log("Error.  Is OAuth enabled?")
 		}
 	}
     def baseURL = "https://graph.api.smartthings.com/api/smartapps/installations"
-	log.debug "Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}"
-	log.debug "Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}"
+	log("Stamp URL:  ${baseURL}/${app.id}/stamp?access_token=${state.accessToken}")
+	log("Reset URL:  ${baseURL}/${app.id}/reschedule?access_token=${state.accessToken}")
 }
 
 
@@ -169,30 +184,31 @@ def checkStamp() {
 
 def reschedule() {
   createSchedule()
-  log.trace("Rescheduled via web API call!")
+  log("Rescheduled via web API call!")
   render contentType: "text/html", data: "<!DOCTYPE html><html><head></head><body>Rescheduled ${app.name}</body></html>"
 }
 
 
-def stash(msg) {
+def log(msg) {
 	log.debug(msg)
-	def dateNow = new Date()
-    // def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", location.timeZone)
-    def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-    def json = "{"
-    json += "\"date\":\"${dateNow}\","
-    json += "\"isoDate\":\"${isoDateNow}\","
-    json += "\"name\":\"log\","
-    json += "\"message\":\"${msg}\","
-    json += "\"smartapp\":\"${app.name}\""
-    json += "}"
-    def params = [
-    	uri: "http://${logstash_host}:${logstash_port}",
-        body: json
-    ]
-    try {
-        httpPostJson(params)
-    } catch ( groovyx.net.http.HttpResponseException ex ) {
-       	log.debug "Unexpected response error: ${ex.statusCode}"
+    if (useLogstash) {
+    	def dateNow = new Date()
+        def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+        def json = "{"
+        json += "\"date\":\"${dateNow}\","
+        json += "\"isoDate\":\"${isoDateNow}\","
+        json += "\"name\":\"log\","
+        json += "\"message\":\"${msg}\","
+        json += "\"smartapp\":\"${app.name}\""
+        json += "}"
+        def params = [
+        	uri: "http://${logstash_host}:${logstash_port}",
+            body: json
+        ]
+        try {
+            httpPostJson(params)
+        } catch ( groovyx.net.http.HttpResponseException ex ) {
+           	log.debug "Unexpected response error: ${ex.statusCode}"
+        }
     }
 }
