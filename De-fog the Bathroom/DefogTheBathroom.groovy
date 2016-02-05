@@ -1,5 +1,5 @@
 /**
- *  De-fog the Bathroom
+ *  Smart Bathroom Fan
  *
  *  Copyright 2015 Brian Keifer
  *
@@ -14,7 +14,7 @@
  *
  */
 definition(
-    name: "De-fog the Bathroom",
+    name: "Smart Bathroom Fan",
     namespace: "bkeifer",
     author: "Brian Keifer",
     description: "Turns on/off a switch (for an exhaust fan) based on humidity.",
@@ -28,6 +28,7 @@ definition(
 preferences {
     page(name: "prefPage")
 }
+
 
 mappings {
   path("/stamp")      { action: [ GET: "checkStamp", ] }
