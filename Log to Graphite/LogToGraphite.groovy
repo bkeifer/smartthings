@@ -38,6 +38,7 @@ preferences {
         input "batteries", "capability.battery", title: "Batteries", required:false, multiple: true
         input "thermostats", "capability.thermostat", title: "Thermostat Setpoints", required: false, multiple: true
         input "energymeters", "capability.energyMeter", title: "Energy Meters", required: false, multiple: true
+        input "powermeters", "capability.powerMeter", title: "Power Meters", required: false, multiple: true
     }
     section ("Graphite Server") {
     	input "graphite_host", "text", title: "Graphite Hostname/IP"
@@ -243,6 +244,17 @@ def checkSensors() {
 			logitems.add([devName + ".volts", "energy", t.latestValue("volts")])
 	        atomicState[t.displayName + ".Volts"] = t.latestValue("volts")
 	        //log.debug("[energy] " + t.displayName + ": " + t.latestValue("volts"))
+        } finally {
+        	continue
+        }
+	}
+
+    for (t in settings.powermeters) {
+    	try {
+	       	def devName = t.displayName.replaceAll('/', '')
+	        logitems.add([devName + ".power", "power", t.latestValue("power")])
+	        atomicState[t.displayName + ".Watts"] = t.latestValue("power")
+	        // log.debug("[power] " + t.displayName + ": " + t.latestValue("power"))
         } finally {
         	continue
         }
