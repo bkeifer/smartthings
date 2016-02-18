@@ -35,13 +35,13 @@ preferences {
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	stash "Installed with settings: ${settings}"
 
 	initialize()
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	stash "Updated with settings: ${settings}"
 
 	unsubscribe()
     unschedule()
@@ -50,16 +50,17 @@ def updated() {
 
 def initialize() {
 	state.changed = false
-	subscribe(sensors, 'contact', "sensorChange")
+    state.pending = false
+	subscribe(sensors, "contact", "sensorChange")
 }
 
 def sensorChange(evt) {
-	log.debug "Desc: $evt.value , $state"
-    if(evt.value == 'open' && !state.changed) {
-        notify("HVAC OFF: ${evt.value} - ${state}")
+	stash("Sensor Changed: ${evt.value}")
+    if(evt.value == 'open' && !state.pending) {
     	unschedule()
+        state.pending = true
         runIn(delay, 'turnOff')
-    } else if(evt.value == 'closed' && state.changed) {
+    } else if(evt.value == 'closed' && (state.changed || state.pending)) {
     	// All closed?
         def isOpen = false
         for(sensor in sensors) {
@@ -70,21 +71,28 @@ def sensorChange(evt) {
 
         if(!isOpen) {
         	unschedule()
-        	runIn(delay, 'restore')
+        	if (state.pending) {
+            	state.pending = false
+			} else if (state.changed) {
+        		runIn(delay, 'restore')
+            }
         }
     }
 }
 
 def turnOff() {
-	log.debug "Turning off thermostat due to contact open"
+	stash "Turning off thermostat due to contact open"
+    notify("Turning off thermostat due to open door!")
 	state.thermostatMode = thermostat.currentValue("thermostatMode")
 	thermostat.off()
+    state.pending = false
     state.changed = true
-    log.debug "State: $state"
+    stash "State: $state"
 }
 
 def restore() {
-    log.debug "Setting thermostat to $state.thermostatMode"
+	notify("All doors closed.  Turning thermostat back on!")
+    stash "Setting thermostat to ${state.thermostatMode}"
     thermostat.setThermostatMode(state.thermostatMode)
     state.changed = false
 }
@@ -94,5 +102,28 @@ def notify(msg) {
         sendNotificationToContacts(msg, recipients)
     } else if (phone) {
         sendSms(phone, msg)
+    }
+}
+
+def stash(msg) {
+	log.debug(msg)
+	TimeZone.setDefault(TimeZone.getTimeZone('UTC'))
+	def dateNow = new Date()
+    def isoDateNow = dateNow.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    def json = "{"
+    json += "\"date\":\"${dateNow}\","
+    json += "\"isoDate\":\"${isoDateNow}\","
+    json += "\"name\":\"log\","
+    json += "\"message\":\"${msg}\","
+    json += "\"program\":\"SmartThings\""
+    json += "}"
+    def params = [
+    	uri: "http://graphite.valinor.net:5279",
+        body: json
+    ]
+    try {
+        httpPostJson(params)
+    } catch ( groovyx.net.http.HttpResponseException ex ) {
+       	log.debug "Unexpected response error: ${ex.statusCode}"
     }
 }

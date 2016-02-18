@@ -139,7 +139,8 @@ def stash(msg) {
     json += "\"isoDate\":\"${isoDateNow}\","
     json += "\"name\":\"log\","
     json += "\"message\":\"${msg}\","
-    json += "\"smartapp\":\"${app.name}\""
+    json += "\"smartapp\":\"${app.name}\","
+    json += "\"program\":\"SmartThings\""
     json += "}"
     def params = [
     	uri: "http://${logstash_host}:${logstash_port}",
