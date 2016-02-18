@@ -56,7 +56,6 @@ def prefPage() {
             input "humidityLow", "number", title: "Turn fan off when room is this percent above average humidity:", required: true
             input "fanDelay", "number", title: "Turn fan off after this many minutes regardless of humidity:", required: false
         }
-
         section("Logstash") {
             input "useLogstash", "bool", title: "Enable Logstash logging?", submitOnChange: true
             if (useLogstash) {
@@ -109,6 +108,12 @@ def initialize() {
 }
 
 
+def poke() {
+    updateAmbientHumidity()
+    createSchedule()
+}
+
+
 def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
     Float rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
@@ -130,6 +135,11 @@ def eventHandler(evt) {
     } else if (state.fanOn != null && fanSwitch.currentSwitch == "off") {
         log("Fan turned OFF by someone/something else.  Resetting.")
         state.fanOn = null
+    }
+
+    if (now() - state.timestamp > 360000) {
+        log("Scheduler hamster died.  Spawning a new one.")
+        poke()
     }
 }
 
