@@ -56,6 +56,9 @@ def prefPage() {
             input "humidityLow", "number", title: "Turn fan off when room is this percent above average humidity:", required: true
             input "fanDelay", "number", title: "Turn fan off after this many minutes regardless of humidity:", required: false
         }
+        section("Enable?") {
+            input "enabled", "bool", title: "Enable this SmartApp?"
+        }
         section("Logstash") {
             input "useLogstash", "bool", title: "Enable Logstash logging?", submitOnChange: true
             if (useLogstash) {
@@ -118,17 +121,25 @@ def eventHandler(evt) {
     def eventValue = Double.parseDouble(evt.value.replace('%', ''))
     Float rollingAverage = state.ambientHumidity.sum() / state.ambientHumidity.size()
 
-    if (eventValue >= (rollingAverage + humidityHigh) && fanSwitch.currentSwitch == "off") {
-        log("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage.round(1)}%).  Turning the fan ON.")
-        state.fanOn = now()
-        fanSwitch.on()
-        //LOLscheduler
-        if(fanDelay) {
-            runIn(fanDelay * 60, fanOff)
+    if (eventValue >= (rollingAverage + humidityHigh) && fanSwitch.currentSwitch == "off" && enabled) {
+        if (enabled) {
+            log("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage.round(1)}%).  Turning the fan ON.")
+            state.fanOn = now()
+            fanSwitch.on()
+            //LOLscheduler
+            if(fanDelay) {
+                runIn(fanDelay * 60, fanOff)
+            }
+        } else {
+            log("Humidity (${eventValue}) is more than ${humidityHigh}% above rolling average (${rollingAverage.round(1)}%).  APP is DISABLED, so not turning the fan ON.")
         }
     } else if (eventValue <= (rollingAverage + humidityLow) && fanSwitch.currentSwitch == "on") {
-        log("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
-        fanOff()
+        if (enabled) {
+            log("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  Turning the fan OFF.")
+            fanOff()
+        } else {
+            log("Humidity (${eventValue}) is at most ${humidityLow}% above rolling average (${rollingAverage}%).  APP is DISABLED, so not turning the fan OFF.")
+        }
     } else if (state.fanOn != null && fanDelay && state.fanOn + fanDelay * 60000 <= now()){
         log("Fan timer elapsed and the hamster in the wheel powering the scheduler died.  Turning the fan OFF.  Current humidity is ${eventValue}%.")
         fanOff()
